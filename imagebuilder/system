@@ -1,0 +1,5 @@
+config system
+	option hostname 'riveros'
+	option ttylogin '0'
+	option log_size '64'
+	option log_proto 'udp'
