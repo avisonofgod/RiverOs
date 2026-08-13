@@ -1,0 +1,30 @@
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	list ipaddr '127.0.0.1/8'
+
+config globals 'globals'
+	option dhcp_default_duid '00042a6e8c7272fd4b91af81756e40fd0183'
+	option ula_prefix 'fdcd:89de:9d21::/48'
+	option packet_steering '1'
+
+config interface 'console'
+	option device 'wan'
+	option proto 'static'
+	option ipaddr '192.168.5.1'
+	option netmask '255.255.255.0'
+
+---DHCP---
+
+config dnsmasq
+	option domainneeded '1'
+	option boguspriv '1'
+	option filterwin2k '0'
+	option localise_queries '1'
+	option rebind_protection '1'
+	option rebind_localhost '1'
+	option local '/lan/'
+	option domain 'lan'
+	option expandhosts '1'
+	option nonegcache '0'

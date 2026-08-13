@@ -1,0 +1,18 @@
+#!/bin/sh /etc/rc.common
+# RiverOs - el puerto ether1 (wan DSA) DEBE llamarse eth0.
+# eth0 ya lo ocupa el CPU port del switch: liberarlo primero (cpu0).
+START=98
+STOP=1
+start() {
+	ip link set lo up
+	if [ -d /sys/class/net/eth0 ] && [ -d /sys/class/net/wan ]; then
+		ip link set eth0 down 2>/dev/null
+		ip link set eth0 name cpu0 2>/dev/null && echo "riveros-red: cpu port eth0 -> cpu0"
+		ip link set wan name eth0 2>/dev/null && echo "riveros-red: wan -> eth0"
+	fi
+	ip link set eth0 up 2>/dev/null
+	ip addr flush dev eth0 2>/dev/null
+	ip addr add 192.168.5.1/24 dev eth0 2>/dev/null
+	echo "riveros-red: eth0 up 192.168.5.1"
+}
+stop() { :; }

@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+# RiverOs - dropbear manual (sin UCI)
+START=95
+STOP=5
+start() {
+	mkdir -p /etc/dropbear
+	[ -f /etc/dropbear/dropbear_ed25519_host_key ] || /usr/bin/dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key -s 256 2>/dev/null
+	/usr/sbin/dropbear -p 22 -s -g 2>/dev/null
+}
+stop() {
+	killall dropbear 2>/dev/null
+}
