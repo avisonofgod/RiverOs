@@ -1,0 +1,118 @@
+#!/bin/sh
+# RiverOs/kernel-propio init — rootfs RAM minimo
+# Estilo RiverOs (produccion OpenWrt): puertos ethX neutro, consola eth0,
+# dropbear password, hook NARA opcional. Sin UCI/netifd/procd.
+#
+# Boot sequence:
+#   1. mounts basicos
+#   2. rename puertos DSA a ethX (cpu port -> sw0, wan -> eth0, lan2..5 -> eth1..4)
+#   3. consola eth0 = 192.168.99.1/24 (IP de gestion, whitelist NARA 8081)
+#   4. dropbear :22 (genera ed25519 key en primer boot)
+#   5. hook NARA: si /etc/nara/zpot existe, arrancarlo (portal :80 + admin :8081)
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mount -t tmpfs none /tmp
+mkdir -p /dev/pts /run
+mount -t devpts none /dev/pts 2>/dev/null
+echo "RiverOs kernel: $(uname -r) - $(uname -m)"
+
+# --- DIAGNOSTICO SIN SERIAL: LED usr (gpio 0, activo ALTO en mainline) parpadea N veces ---
+# 2 parpadeos = kernel+init OK; 4 = wan/lan5 presentes; 6 = consola IP puesta.
+# Si el LED no parpadea nada: kernel panic antes de init.
+led_setup() {
+    # /sys/class/gpio/gpio0/value (active high en mainline: 1=on, 0=off)
+    [ -e /sys/class/gpio/gpio0/value ] || {
+        echo 0 > /sys/class/gpio/export 2>/dev/null
+        echo out > /sys/class/gpio/gpio0/direction 2>/dev/null
+    }
+}
+led_blink() {  # $1 = veces
+    local n=$1 i
+    led_setup
+    for i in $(seq 1 $n); do
+        echo 1 > /sys/class/gpio/gpio0/value 2>/dev/null
+        sleep 0.2
+        echo 0 > /sys/class/gpio/gpio0/value 2>/dev/null
+        sleep 0.2
+    done
+}
+led_blink 2
+echo "LED diag: 2 (init OK)"
+
+# --- rename puertos DSA a ethX (mismo orden que rename-ports S08 en OpenWrt) ---
+# Esperar a que el kernel cree los netdevs (hotplug async)
+i=0
+while [ $i -lt 60 ]; do
+    [ -d /sys/class/net/wan ] && [ -d /sys/class/net/lan5 ] && break
+    i=$((i + 1)); sleep 0.5
+done
+# Log a consola: si los puertos no existen, el switch no subio (diagnostico)
+if [ ! -d /sys/class/net/wan ]; then
+    echo "WARN: wan no existe; netdevs: $(ls /sys/class/net 2>/dev/null | tr '\n' ' ')"
+    led_blink 3
+    echo "LED diag: 3 (wan AUSENTE)"
+else
+    led_blink 4
+    echo "LED diag: 4 (wan/lan5 presentes)"
+fi
+# Orden critico: liberar eth0 (cpu port) primero, luego wan -> eth0
+# Solo renombrar si el destino no existe ya (evita colision)
+[ -d /sys/class/net/eth0 ] && ip link set eth0 name sw0 2>/dev/null
+[ -d /sys/class/net/wan ] && ip link set wan name eth0 2>/dev/null
+[ -d /sys/class/net/lan2 ] && ip link set lan2 name eth1 2>/dev/null
+[ -d /sys/class/net/lan3 ] && ip link set lan3 name eth2 2>/dev/null
+[ -d /sys/class/net/lan4 ] && ip link set lan4 name eth3 2>/dev/null
+[ -d /sys/class/net/lan5 ] && ip link set lan5 name eth4 2>/dev/null
+echo "RiverOs: puertos -> eth0..eth4 (cpu sw0) [$(ls /sys/class/net | tr '\n' ' ')]"
+
+# --- consola eth0 (IP de gestion) ---
+ip link set lo up
+# Si wan NO existia, eth0 fue renombrado a sw0: la IP iria a interfaz inexistente.
+# Fallback: restaurar eth0 (cpu port) para no quedar sin red en absoluto.
+if [ ! -d /sys/class/net/eth0 ] && [ -d /sys/class/net/sw0 ]; then
+    echo "WARN: wan ausente (switch DSA no subio); consola en cpu port"
+    ip link set sw0 name eth0 2>/dev/null
+fi
+ip link set eth0 up
+ip addr flush dev eth0 2>/dev/null
+ip addr add 192.168.99.1/24 dev eth0
+echo "RiverOs: consola eth0 = 192.168.99.1/24 [$(ip -4 addr show eth0 2>/dev/null | grep inet | head -1)]"
+led_blink 6
+echo "LED diag: 6 (consola IP puesta)"
+
+# WANs/consola: IP en TODOS los puertos (responde desde cualquier ether — netboot test)
+for p in eth1 eth2 eth3 eth4; do
+    [ -d /sys/class/net/$p ] || continue
+    ip link set $p up 2>/dev/null
+    case $p in
+        eth1) IP=192.168.2.1 ;;
+        eth2) IP=192.168.4.1 ;;
+        eth3) IP=192.168.5.1 ;;
+        eth4) IP=192.168.50.1 ;;
+    esac
+    ip addr flush dev $p 2>/dev/null
+    ip addr add $IP/24 dev $p 2>/dev/null
+    echo "RiverOs: $p = $IP/24"
+done
+
+# --- dropbear :22 (password auth; NUNCA -g que rechaza password) ---
+mkdir -p /etc/dropbear
+[ -f /etc/dropbear/dropbear_ed25519_host_key ] || \
+    /sbin/dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key -s 256 >/dev/null 2>&1
+/sbin/dropbear -E -p 22 2>/dev/null &
+echo "RiverOs: dropbear :22 listo"
+
+# --- hook NARA (backend zpot si esta presente en flash/overlay) ---
+if [ -x /etc/nara/zpot ]; then
+    mkdir -p /home/naram
+    [ -e /home/naram/static ] || ln -sfn /etc/nara/static /home/naram/static
+    [ -e /home/naram/templates ] || ln -sfn /etc/nara/templates /home/naram/templates
+    [ -e /usr/lib/libc.so.1 ] || ln -sf /lib/libc.so /usr/lib/libc.so.1
+    cd /etc/nara
+    /etc/nara/zpot >/tmp/zpot.log 2>&1 &
+    echo "RiverOs: NARA arrancado (:80 portal, :8081 admin)"
+fi
+
+echo "RiverOs listo: ssh root@192.168.99.1"
+exec sh
