@@ -1,115 +1,115 @@
 #!/bin/bash
 # build.sh — kernel RiverOs-kernel para MikroTik hEX (RB750Gr3)
-# ESTRATEGIA 2026-08: allnoconfig + enables minimos, PERO con SMP/CM/GIC
-# (sin ellos el kernel paniquea antes del init: interAptiv dual-core).
-# Consola en eth0 (primer puerto tras rename), dropbear :22.
-set -u
-CROSS=mipsel-linux-gnu-
-K=linux-6.12.103
-U=$(nproc)
-SHA256_EXPECTED=f143aaade8877ba5616e788b4482576db28481bcf557ef537f4fcc3938fc3176
-TAR=linux-6.12.103.tar.xz
-
+# ESTRATEGIA 2026-08-13 (v2): base = config OpenWrt COMPLETO (la unica que
+# bootea en este hardware; allnoconfig paniquea antes del init aun con
+# SMP/CM/GIC/CPS) + red como MODULOS .ko en initramfs (kernel puro chico).
+# LIMITE REAL: RouterBOOT acepto 6.66MiB con entry 0x80b71000 (1 TFTP);
+# los rechazos de 5.55/5.58 eran por entry 0x80b71400, NO por tamano.
+set -e
 cd "$(dirname "$0")"
+K=linux-6.12.103
+CROSS=mipsel-linux-gnu-
+U=$(nproc)
 
-if [ ! -d "$K" ]; then
-    if [ ! -f "$TAR" ]; then
-        echo "==> descargando linux 6.12.103"
-        curl -fSL -o "$TAR" https://cdn.kernel.org/pub/linux/kernel/v6.x/$TAR || exit 1
-    fi
-    echo "==> verificando SHA256 del tarball"
-    echo "$SHA256_EXPECTED  $TAR" | sha256sum -c - || exit 1
-    tar xJf "$TAR" || exit 1
-fi
+echo "==> config: base OpenWrt (config-6.12-mt7621) + olddefconfig"
+make -C $K ARCH=mips CROSS_COMPILE=$CROSS clean >/dev/null 2>&1
+cp config-6.12-mt7621 $K/.config
 
-cd "$K"
+cd $K
 
-echo "==> allnoconfig + config RiverOs-kernel (minimal)"
-make ARCH=mips CROSS_COMPILE=$CROSS allnoconfig >/dev/null 2>&1
-
-# --- plataforma MT7621 (imprescindible: sin SMP/CM/GIC paniquea antes de init) ---
-# LOAD zona alta: override CLI load-y (CONFIG_PHYSICAL_START requiere CRASH_DUMP)
-for s in SOC_MT7621 RALINK MIPS_MT_SMP MIPS_CM MIPS_GIC MIPS_GIC_IRQ \
-    CPU_MIPS32_R2 MIPS_CPU_IRQ CEVT_R4K CSRC_R4K GENERIC_CLOCKEVENTS \
-    MIPS_CMDLINE_FROM_DTB MIPS_ELF_APPENDED_DTB USE_OF OF_GPIO \
-    CLK_MT7621 PINCTRL_MT7621 PINCTRL_RALINK RESET_CONTROLLER MFD_SYSCON \
-    POWER_RESET POWER_RESET_GPIO GPIOLIB GPIO_CDEV GPIO_SYSFS; do
+# --- plataforma MT7621 (refuerzo explicito; el config OpenWrt ya la trae) ---
+for s in SOC_MT7621 RALINK MIPS_MT_SMP MIPS_MT MIPS_CM MIPS_CPS MIPS_CPC MIPS_GIC \
+    MIPS_GIC_IRQ SMP SMP_UP MIPS_MT_FPAFF SYS_SUPPORTS_SMP SYS_SUPPORTS_MULTITHREADING \
+    CLK_MT7621 COMMON_CLK PINCTRL PINCTRL_MT7621 PINCTRL_RALINK PINCTRL_MTK_MTMIPS \
+    RESET_CONTROLLER MFD_SYSCON POWER_RESET POWER_RESET_GPIO GPIOLIB GPIO_MT7621 \
+    NVMEM TIMER_PROBE TIMER_OF GENERIC_CLOCKEVENTS CLKSRC_MIPS_GIC CEVT_R4K CSRC_R4K \
+    EARLY_PRINTK OF OF_FLATTREE OF_EARLY_FLATTREE USE_OF IRQCHIP IRQ_DOMAIN \
+    CPU_MIPS32_R2 CPU_MIPS32 SYS_HAS_CPU_MIPS32_R2 SYS_SUPPORTS_LITTLE_ENDIAN \
+    CPU_LITTLE_ENDIAN CPU_SUPPORTS_32BIT_KERNEL SYS_SUPPORTS_32BIT_KERNEL \
+    BOOT_RAW BINFMT_ELF BINFMT_SCRIPT \
+    PRINTK PROC_FS SYSFS TMPFS DEVTMPFS SHMEM BUG MULTIUSER FUTEX EPOLL \
+    EXPERT; do
     scripts/config --enable $s
 done
 
-# --- initramfs embebido (gzip) ---
-scripts/config --set-str INITRAMFS_SOURCE "$(cd "$(dirname "$0")/.." && pwd)/rootfs"
-for s in BLK_DEV_INITRD RD_GZIP RD_XZ INITRAMFS_COMPRESSION_GZIP INITRAMFS_COMPRESSION; do
-    scripts/config --enable $s
-done
-scripts/config --disable INITRAMFS_COMPRESSION_XZ INITRAMFS_COMPRESSION_LZMA \
-    INITRAMFS_COMPRESSION_BZIP2 INITRAMFS_COMPRESSION_LZO INITRAMFS_COMPRESSION_LZ4 \
-    INITRAMFS_COMPRESSION_ZSTD
-
-# --- consola serial (RB750Gr3 UART ns16550a, ttyS0) ---
-for s in SERIAL_8250 SERIAL_8250_CONSOLE SERIAL_CORE_CONSOLE SERIAL_EARLYCON \
-    SERIAL_8250_MT7621; do
+# --- consola serial (ttyS0) ---
+for s in TTY SERIAL_8250 SERIAL_8250_CONSOLE SERIAL_CORE_CONSOLE SERIAL_EARLYCON; do
     scripts/config --enable $s
 done
 
-# --- red: DSA MT7530 + eth mediatek (consola eth0 por ether1) ---
-for s in NET PACKET UNIX INET NETDEVICES ETHERNET NET_VENDOR_MEDIATEK \
-    NET_MEDIATEK_SOC NET_SWITCHDEV PHYLINK PHYLIB MDIO_BUS MDIO_DEVRES \
-    NET_DSA NET_DSA_MT7530 NET_DSA_MT7530_MDIO NET_DSA_TAG_MTK; do
+# --- RED core =y; drivers =m (.ko en initramfs) ---
+for s in NET PACKET UNIX INET NETDEVICES ETHERNET MODULES MODULE_UNLOAD; do
     scripts/config --enable $s
 done
-
-# --- LEDs diag: OFF (ahorro ~15KB; el init usa led_blink solo si existe /sys/class/leds)
-# --- GPIO_CDEV: lo fuerza GPIO_SYSFS (select), no deshabilitarlo ---
-for s in NEW_LEDS LEDS_CLASS LEDS_GPIO; do
-    scripts/config --disable $s
+for s in NET_DSA NET_DSA_MT7530 NET_DSA_MT7530_MDIO NET_MEDIATEK_SOC \
+    PHYLINK PHYLIB MDIO_DEVICE MDIO_BUS \
+    MEDIATEK_GE_PHY PCS_MTK_LYNXI; do
+    scripts/config --module $s
 done
+# NET_VENDOR_MEDIATEK es BOOL (--module no aplica; debe ir --enable)
+scripts/config --enable NET_VENDOR_MEDIATEK
 
-make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
+echo "==> olddefconfig (config completo tipo OpenWrt)"
+make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1
 
-# --- reducir tamano (DESPUES del olddefconfig, sin otro olddefconfig despues:
-#     si no, los revive; KALLSYMS/WIRELESS/WLAN lo demostraron) ---
-# -Os (config OpenWrt base usa -O2; ahorro ~300-500KB en MIPS)
-scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE
+# --- initramfs + DTB + tamano DESPUES del olddefconfig (sin otro olddefconfig) ---
+scripts/config --enable BLK_DEV_INITRD
+scripts/config --enable INITRAMFS_COMPRESSION_GZIP
+scripts/config --enable RD_GZIP
+scripts/config --set-str INITRAMFS_SOURCE "$(cd .. && pwd)/rootfs"
 scripts/config --enable CC_OPTIMIZE_FOR_SIZE
-# serial 8250 OFF: consola RiverOs es por RED (SSH eth0), no serial; ahorro ~50KB
-for s in SERIAL_8250 SERIAL_8250_CONSOLE SERIAL_CORE_CONSOLE SERIAL_EARLYCON \
-    SERIAL_8250_MT7621 PHY_MT7621_PCI SPI_MT7621 PHY_MTK_TPHY; do
-    scripts/config --disable $s
-done
-for s in KALLSYMS WIRELESS WLAN CFG80211 MAC80211 NETFILTER IPV6 BRIDGE VLAN_8021Q \
-    NET_SCHED NET_CLS_INET USB MMC WATCHDOG RTC_CLASS SOUND INPUT HWMON PCI I2C \
-    MTD BLK_DEV REGULATOR CGROUPS NAMESPACES MODULES DEBUG_INFO \
-    NET_VENDOR_INTEL NET_VENDOR_ATHEROS NET_VENDOR_BROADCOM NET_VENDOR_REALTEK \
-    NET_VENDOR_MARVELL NET_VENDOR_SIS NET_VENDOR_VIA NET_VENDOR_ALACRITECH \
-    NET_VENDOR_AMD NET_VENDOR_ARC NET_VENDOR_CAVIUM NET_VENDOR_CIRRUS \
-    NET_VENDOR_CORTINA NET_VENDOR_DAVICOM NET_VENDOR_DEC NET_VENDOR_DLINK \
-    NET_VENDOR_EMULEX NET_VENDOR_GOOGLE NET_VENDOR_HISILICON NET_VENDOR_HP \
-    NET_VENDOR_IBM NET_VENDOR_LANTIQ NET_VENDOR_MICREL NET_VENDOR_MICROCHIP \
-    NET_VENDOR_MICROSEMI NET_VENDOR_MYRI NET_VENDOR_NATSEMI NET_VENDOR_NETRONOME \
-    NET_VENDOR_NI NET_VENDOR_NOKIA NET_VENDOR_PENSANDO NET_VENDOR_QLOGIC \
-    NET_VENDOR_QUALCOMM NET_VENDOR_RENESAS NET_VENDOR_ROCKER NET_VENDOR_SAMSUNG \
-    NET_VENDOR_SEEQ NET_VENDOR_SOLARFLARE NET_VENDOR_STMICRO NET_VENDOR_SUN \
-    NET_VENDOR_SYNOPSYS NET_VENDOR_TEHUTI NET_VENDOR_TI NET_VENDOR_VERTEXCOM \
-    NET_VENDOR_WIZNET NET_VENDOR_XILINX NET_VENDOR_FREESCALE; do
-    scripts/config --disable $s
-done
-# KALLSYMS final (visible con EXPERT; si va otro olddefconfig despues se revive)
-scripts/config --enable EXPERT
 scripts/config --disable KALLSYMS
-scripts/config --enable GPIO_SYSFS
+scripts/config --enable ELF_APPENDED_DTB
+scripts/config --enable MIPS_ELF_APPENDED_DTB
 
-echo "==> build vmlinux ($U jobs, load-y zona alta 0x80b71000)"
+# --- reducir tamano: bloques no usados (POST-olddefconfig, no correr otro) ---
+for s in WIRELESS WLAN CFG80211 MAC80211 MT76 MT7603 MT7615 MT7915 \
+    USB PCI I2C INPUT HWMON RTC_CLASS WATCHDOG SOUND REGULATOR CGROUPS \
+    NAMESPACES MTD BLK_DEV MMC NETFILTER IPV6 BRIDGE VLAN_8021Q \
+    NET_SCHED NET_CLS NFC CAN BLUETOOTH BPF BPF_SYSCALL KPROBES FTRACE PERF_EVENTS \
+    STACKTRACE DEBUG_KERNEL DEBUG_INFO DEBUG_FS GDB_SCRIPTS IKCONFIG \
+    GPIO_CDEV NEW_LEDS LEDS_CLASS LEDS_GPIO; do
+    scripts/config --disable $s
+done
+
+# --- vmlinux PRIMERO (genera Module.symvers; sin el, modpost: undefined) ---
+echo "==> build vmlinux (load-y 0x80b71000, sin .notes)"
 make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j$U vmlinux >/dev/null 2>&1 || {
     echo "ERROR: make vmlinux fallo"; exit 1; }
 
-echo "==> DTB + append al ELF (entry=LOAD+0x400, seccion .appended_dtb)"
-make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 dtbs >/dev/null 2>&1 || exit 1
-DTB=arch/mips/boot/dts/ralink/mt7621_mikrotik_routerboard-750gr3.dtb
-# entry = LOAD base EXACTA 0x80b71000 (== 22.03.3 funcional; 0x80b71400 NO arranca)
-# quitar .notes: el 22.03.3 no tiene 2o PHDR NOTE (RouterBOOT puede rechazarlo)
-mipsel-linux-gnu-objcopy --set-start=0x80b71000 --remove-section=.notes \
-    --update-section .appended_dtb=$DTB vmlinux ../naraos-vmlinux || exit 1
-mipsel-linux-gnu-strip ../naraos-vmlinux 2>/dev/null || true
+# --- modulos: .ko al rootfs (strip) ---
+echo "==> modulos: make modules + copiar .ko al rootfs"
+make ARCH=mips CROSS_COMPILE=$CROSS -j$U modules >/dev/null 2>&1 || {
+    echo "ERROR: make modules fallo"; exit 1; }
+rm -rf ../rootfs/lib/modules
+mkdir -p ../rootfs/lib/modules
+find . -name "*.ko" | grep -E "dsa|mt7530|mtk_eth|mediatek|mdio|phylink|phy|pcs" | \
+    grep -v selftests | \
+    while read -r m; do
+        cp "$m" ../rootfs/lib/modules/ 2>/dev/null
+        ${CROSS}strip --strip-unneeded ../rootfs/lib/modules/$(basename "$m") 2>/dev/null
+    done
+echo "modulos en rootfs: $(ls ../rootfs/lib/modules/ | wc -l) ($(du -sh ../rootfs/lib/modules/ | cut -f1))"
 
-echo "OK: ../naraos-vmlinux ($(stat -c%s ../naraos-vmlinux) bytes)"
+# --- re-link vmlinux (initramfs con .ko): make incremental NO relinkea ---
+# el thin archive (ar rcsT) es normal en 6.12; regenerar TODO en serial
+rm -f usr/initramfs_data.o usr/initramfs_data.cpio usr/initramfs_inc_data \
+      usr/built-in.a vmlinux
+echo "==> re-link vmlinux (initramfs con .ko)"
+make ARCH=mips CROSS_COMPILE=$CROSS usr/initramfs_data.o >/dev/null 2>&1 || {
+    echo "ERROR: make initramfs_data.o fallo"; exit 1; }
+make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j1 vmlinux >/dev/null 2>&1 || {
+    echo "ERROR: make vmlinux (re-link) fallo"; exit 1; }
+
+echo "==> dtbs + objcopy (entry=LOAD base 0x80b71000, sin .notes)"
+make ARCH=mips CROSS_COMPILE=$CROSS dtbs >/dev/null 2>&1 || true
+DTB=arch/mips/boot/dts/ralink/mt7621_mikrotik_routerboard-750gr3.dtb
+mipsel-linux-gnu-objcopy \
+    --set-start=0x80b71000 \
+    --update-section .appended_dtb=$DTB \
+    --remove-section .notes \
+    vmlinux ../naraos-vmlinux 2>&1 || {
+    echo "ERROR: objcopy fallo"; exit 1; }
+
+SIZE=$(stat -c%s ../naraos-vmlinux)
+echo "==> OK: $SIZE B ($(echo "scale=2; $SIZE/1048576" | bc) MiB) entry 0x80b71000"
