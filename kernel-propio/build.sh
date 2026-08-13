@@ -58,8 +58,10 @@ scripts/config --enable INITRAMFS_COMPRESSION_GZIP
 scripts/config --enable RD_GZIP
 scripts/config --set-str INITRAMFS_SOURCE "$(cd .. && pwd)/rootfs"
 scripts/config --enable CC_OPTIMIZE_FOR_SIZE
+scripts/config --enable LD_DEAD_CODE_DATA_ELIMINATION
 scripts/config --disable KALLSYMS
 scripts/config --enable ELF_APPENDED_DTB
+scripts/config --disable MIPS_RAW_APPENDED_DTB
 scripts/config --enable MIPS_ELF_APPENDED_DTB
 
 # --- reducir tamano: bloques no usados (POST-olddefconfig, no correr otro) ---
@@ -68,13 +70,23 @@ for s in WIRELESS WLAN CFG80211 MAC80211 MT76 MT7603 MT7615 MT7915 \
     NAMESPACES MTD BLK_DEV MMC NETFILTER IPV6 BRIDGE VLAN_8021Q \
     NET_SCHED NET_CLS NFC CAN BLUETOOTH BPF BPF_SYSCALL KPROBES FTRACE PERF_EVENTS \
     STACKTRACE DEBUG_KERNEL DEBUG_INFO DEBUG_FS GDB_SCRIPTS IKCONFIG \
-    GPIO_CDEV NEW_LEDS LEDS_CLASS LEDS_GPIO; do
+    GPIO_CDEV NEW_LEDS LEDS_CLASS LEDS_GPIO \
+    INPUT_KEYBOARD INPUT_MOUSE MOUSE_PS2 MOUSE_PS2_ALPS MOUSE_PS2_BYD \
+    MOUSE_PS2_CYPRESS MOUSE_PS2_FOCALTECH MOUSE_PS2_LOGIPS2PP \
+    MOUSE_PS2_SYNAPTICS MOUSE_PS2_TRACKPOINT \
+    SCSI_MOD BLOCK_LEGACY_AUTOLOAD PCI_DRIVERS_GENERIC; do
     scripts/config --disable $s
+done
+
+# NET_VENDOR_*: el config OpenWrt trae ~40 vendors (cada uno = driver ethernet).
+# Solo MEDIATEK es necesario (mtk_eth); los demas inflan el kernel.
+for s in $(grep -oE "^CONFIG_NET_VENDOR_[A-Z0-9_]+=y" .config | sed 's/^CONFIG_//;s/=y//'); do
+    [ "$s" = "NET_VENDOR_MEDIATEK" ] || scripts/config --disable $s
 done
 
 # --- vmlinux PRIMERO (genera Module.symvers; sin el, modpost: undefined) ---
 echo "==> build vmlinux (load-y 0x80b71000, sin .notes)"
-make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j$U vmlinux >/dev/null 2>&1 || {
+make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 KBUILD_LDFLAGS="-z max-page-size=0x10000" -j$U vmlinux >/dev/null 2>&1 || {
     echo "ERROR: make vmlinux fallo"; exit 1; }
 
 # --- modulos: .ko al rootfs (strip) ---
@@ -98,7 +110,7 @@ rm -f usr/initramfs_data.o usr/initramfs_data.cpio usr/initramfs_inc_data \
 echo "==> re-link vmlinux (initramfs con .ko)"
 make ARCH=mips CROSS_COMPILE=$CROSS usr/initramfs_data.o >/dev/null 2>&1 || {
     echo "ERROR: make initramfs_data.o fallo"; exit 1; }
-make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j1 vmlinux >/dev/null 2>&1 || {
+make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 KBUILD_LDFLAGS="-z max-page-size=0x10000" -j1 vmlinux >/dev/null 2>&1 || {
     echo "ERROR: make vmlinux (re-link) fallo"; exit 1; }
 
 echo "==> dtbs + objcopy (entry=LOAD base 0x80b71000, sin .notes)"
