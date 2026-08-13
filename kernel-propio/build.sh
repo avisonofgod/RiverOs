@@ -59,9 +59,10 @@ for s in NET PACKET UNIX INET NETDEVICES ETHERNET NET_VENDOR_MEDIATEK \
     scripts/config --enable $s
 done
 
-# --- LEDs diag (usr gpio0): blink 2/3/4/6 en init ---
-for s in NEW_LEDS LEDS_CLASS LEDS_GPIO; do
-    scripts/config --enable $s
+# --- LEDs diag: OFF (ahorro ~15KB; el init usa led_blink solo si existe /sys/class/leds)
+# --- GPIO_CDEV: off (no se usa en initramfs)
+for s in NEW_LEDS LEDS_CLASS LEDS_GPIO GPIO_CDEV; do
+    scripts/config --disable $s
 done
 
 make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
@@ -71,6 +72,11 @@ make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
 # -Os (config OpenWrt base usa -O2; ahorro ~300-500KB en MIPS)
 scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE
 scripts/config --enable CC_OPTIMIZE_FOR_SIZE
+# serial 8250 OFF: consola RiverOs es por RED (SSH eth0), no serial; ahorro ~50KB
+for s in SERIAL_8250 SERIAL_8250_CONSOLE SERIAL_CORE_CONSOLE SERIAL_EARLYCON \
+    SERIAL_8250_MT7621 PHY_MT7621_PCI SPI_MT7621 PHY_MTK_TPHY; do
+    scripts/config --disable $s
+done
 for s in KALLSYMS WIRELESS WLAN CFG80211 MAC80211 NETFILTER IPV6 BRIDGE VLAN_8021Q \
     NET_SCHED NET_CLS_INET USB MMC WATCHDOG RTC_CLASS SOUND INPUT HWMON PCI I2C \
     MTD BLK_DEV REGULATOR CGROUPS NAMESPACES MODULES DEBUG_INFO \
