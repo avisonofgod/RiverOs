@@ -72,6 +72,15 @@ scripts/config --enable SERIAL_CORE_CONSOLE
 scripts/config --enable SERIAL_8250_NR_UARTS
 scripts/config --set-val SERIAL_8250_NR_UARTS 4
 
+# LED usr (gpio 0) para diagnostico sin serial: init parpadea N veces segun
+# estado (2=init OK, 4=wan presente, 6=consola IP). Sin NEW_LEDS no existe
+# /sys/class/leds. LEDS_GPIO requiere GPIOLIB.
+scripts/config --enable NEW_LEDS
+scripts/config --enable LEDS_CLASS
+scripts/config --enable LEDS_GPIO
+scripts/config --enable GPIOLIB
+scripts/config --enable GPIO_SYSFS
+
 if [ "$1" = "menuconfig" ]; then
     make ARCH=mips CROSS_COMPILE=$CROSS menuconfig
 fi
