@@ -1,5 +1,6 @@
 #!/bin/bash
-# build-rootfs.sh — rootfs Risp-OS (busybox + dropbear + Risp, estaticos)
+# build-rootfs.sh — rootfs RiverOs-kernel (busybox + dropbear estaticos)
+# RiverOs = kernel propio; Risp (zpot) = backend panel, se monta encima (fase 2)
 # Ensambla $OUT/ y genera initramfs cpio.gz para el kernel
 set -e
 cd "$(dirname "$0")"
