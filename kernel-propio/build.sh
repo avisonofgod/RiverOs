@@ -60,8 +60,8 @@ for s in NET PACKET UNIX INET NETDEVICES ETHERNET NET_VENDOR_MEDIATEK \
 done
 
 # --- LEDs diag: OFF (ahorro ~15KB; el init usa led_blink solo si existe /sys/class/leds)
-# --- GPIO_CDEV: off (no se usa en initramfs)
-for s in NEW_LEDS LEDS_CLASS LEDS_GPIO GPIO_CDEV; do
+# --- GPIO_CDEV: lo fuerza GPIO_SYSFS (select), no deshabilitarlo ---
+for s in NEW_LEDS LEDS_CLASS LEDS_GPIO; do
     scripts/config --disable $s
 done
 
@@ -97,6 +97,7 @@ done
 # KALLSYMS final (visible con EXPERT; si va otro olddefconfig despues se revive)
 scripts/config --enable EXPERT
 scripts/config --disable KALLSYMS
+scripts/config --enable GPIO_SYSFS
 
 echo "==> build vmlinux ($U jobs, load-y zona alta 0x80b71000)"
 make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j$U vmlinux >/dev/null 2>&1 || {
