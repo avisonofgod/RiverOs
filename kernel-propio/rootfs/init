@@ -44,6 +44,11 @@ done
 # Log a consola: si los puertos no existen, el switch no subio (diagnostico)
 if [ ! -d /sys/class/net/wan ]; then
     echo "WARN: wan no existe; netdevs: $(ls /sys/class/net 2>/dev/null | tr '\n' ' ')"
+    led_blink 3
+    echo "LED diag: 3 (wan AUSENTE)"
+else
+    led_blink 4
+    echo "LED diag: 4 (wan/lan5 presentes)"
 fi
 # Orden critico: liberar eth0 (cpu port) primero, luego wan -> eth0
 # Solo renombrar si el destino no existe ya (evita colision)
@@ -67,6 +72,8 @@ ip link set eth0 up
 ip addr flush dev eth0 2>/dev/null
 ip addr add 192.168.99.1/24 dev eth0
 echo "RiverOs: consola eth0 = 192.168.99.1/24 [$(ip -4 addr show eth0 2>/dev/null | grep inet | head -1)]"
+led_blink 6
+echo "LED diag: 6 (consola IP puesta)"
 
 # WANs configuradas por NARA se aplican en runtime (fase 2); eth1..eth4 up
 for p in eth1 eth2 eth3 eth4; do
