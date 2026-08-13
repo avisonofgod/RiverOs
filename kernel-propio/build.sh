@@ -1,5 +1,7 @@
 #!/bin/bash
-# build.sh — kernel NARA-OS para MikroTik hEX (RB750Gr3)
+# build.sh — kernel RiverOs-kernel para MikroTik hEX (RB750Gr3)
+# RiverOs = kernel Linux propio recodificado (capa SO). NARA (zpot) es el
+# backend panel, repo separado Nara-Mips — NO es este kernel.
 # Uso: ./build.sh [menuconfig]
 set -e
 cd "$(dirname "$0")"
@@ -25,7 +27,7 @@ command -v ${CROSS}gcc >/dev/null 2>&1 || { echo "FALTA toolchain ${CROSS}gcc"; 
 
 cd "$KSRC"
 
-echo "==> allnoconfig + config NARA-OS (minimal)"
+echo "==> allnoconfig + config RiverOs-kernel (minimal)"
 make ARCH=mips CROSS_COMPILE=$CROSS allnoconfig >/dev/null 2>&1 || true
 
 # Plataforma ralink + SoC MT7621
@@ -36,7 +38,7 @@ scripts/config --disable SOC_RT305X --enable SOC_MT7621
 # dentro del segmento LOAD (RouterBOOT lo carga). RAW no sirve con ELF.
 scripts/config --disable MIPS_NO_APPENDED_DTB --enable MIPS_ELF_APPENDED_DTB --disable MIPS_RAW_APPENDED_DTB
 # initramfs (rootfs embebido, comprimido xz — mas pequeno que gzip)
-scripts/config --set-str INITRAMFS_SOURCE "/root/proyectos/nara-os/repo/rootfs"
+scripts/config --set-str INITRAMFS_SOURCE "$(cd "$(dirname "$0")/.." && pwd)/rootfs"
 scripts/config --enable INITRAMFS_COMPRESSION_XZ
 # core (NET debe ir ANTES que INET/NETDEVICES: allnoconfig apaga NET)
 for s in BLK_DEV_INITRD DEVTMPFS DEVTMPFS_MOUNT TMPFS PROC_FS SYSFS \
