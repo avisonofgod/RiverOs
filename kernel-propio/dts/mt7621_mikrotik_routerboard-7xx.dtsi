@@ -31,20 +31,11 @@
 	};
 };
 
-&reg_vbus {
-	/delete-property/ regulator-always-on;
-	gpios = <&gpio 12 GPIO_ACTIVE_HIGH>;
-	enable-active-high;
-	regulator-boot-on;
-};
-
 &switch0 {
 	ports {
 		port0: port@0 {
 			status = "okay";
-			label = "wan";
-
-			nvmem-cells = <&macaddr_hard 0>;
+			label = "wan";			nvmem-cells = <&macaddr_hard 0>;
 			nvmem-cell-names = "mac-address";
 		};
 
@@ -79,9 +70,12 @@
 			nvmem-cells = <&macaddr_hard 4>;
 			nvmem-cell-names = "mac-address";
 		};
-	};
-};
 
-&sdhci {
-	status = "okay";
+		/* RB750Gr3: solo gmac0 es cpu port (trgmii). port5 (gmac1 rgmii)
+		 * del mt7621.dtsi base queda sin conectar — deshabilitarlo evita
+		 * un segundo master DSA que confunde al driver eth. */
+		port@5 {
+			status = "disabled";
+		};
+	};
 };
