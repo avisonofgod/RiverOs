@@ -40,6 +40,13 @@ led_blink() {  # $1 = veces
 led_blink 2
 echo "LED diag: 2 (init OK)"
 
+# --- cargar modulos de red (.ko del initramfs; kernel puro chico como OpenWrt) ---
+for m in /lib/modules/*.ko; do
+    [ -e "$m" ] || continue
+    insmod "$m" 2>/dev/null && echo "insmod: $(basename $m)"
+done
+sleep 1  # dejar que los drivers registren netdevs
+
 # --- rename puertos DSA a ethX (mismo orden que rename-ports S08 en OpenWrt) ---
 # Esperar a que el kernel cree los netdevs (hotplug async)
 i=0
