@@ -38,6 +38,7 @@ Todo por terminal; API NARA expuesta para frontend externo nativo.
 6. [ ] Servicios: nara.init (arranque + respawn), red, firewall nftables
 
 ## Build
-    ./build.sh          # descarga kernel, aplica config, cross-compila
+    ./build.sh          # descarga kernel, aplica config OpenWrt 25.12.5 (ramips/mt7621),
+                        #   cross-compila (MIPS_MT_SMP/MIPS_CM/GIC — allnoconfig manual NO bootea)
     ./build-rootfs.sh   # ensambla initramfs/rootfs con busybox/dropbear/nara
     ./flash.sh          # netboot TFTP (dev) o escritura NAND (prod)

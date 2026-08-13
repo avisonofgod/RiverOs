@@ -1,11 +1,12 @@
 #!/bin/bash
 # build.sh — kernel RiverOs-kernel para MikroTik hEX (RB750Gr3)
-# RiverOs = kernel Linux propio recodificado (capa SO). NARA (zpot) es el
-# backend panel, repo separado Nara-Mips — NO es este kernel.
-# Uso: ./build.sh [menuconfig]
+# REESCRITO 2026-08: base = config de OpenWrt 25.12.5 (ramips/mt7621), el
+# que SÍ arranca en este hardware. allnoconfig + subset manual ROMPIA el
+# boot (faltaban MIPS_MT_SMP/MIPS_CM/timers -> panic antes del init).
+# RiverOs = kernel Linux propio; NARA (zpot) = backend panel, repo separado.
+#
+# Requiere: toolchain mipsel-linux-gnu (CROSS), tar.xz del kernel en $KSRC
 set -e
-cd "$(dirname "$0")"
-
 KVER=6.12.103
 KSRC=linux-$KVER
 TARBALL=$KSRC.tar.xz
@@ -13,9 +14,7 @@ URL=https://cdn.kernel.org/pub/linux/kernel/v6.x/$TARBALL
 SHA256_EXPECTED=f143aaade8877ba5616e788b4482576db28481bcf557ef537f4fcc3938fc3176
 CROSS=mipsel-linux-gnu-
 DTB=arch/mips/boot/dts/ralink/mt7621_mikrotik_routerboard-750gr3.dtb
-
-# Verificar toolchain cross antes de nada
-command -v ${CROSS}gcc >/dev/null 2>&1 || { echo "FALTA toolchain ${CROSS}gcc"; exit 1; }
+OUT=../naraos-vmlinux
 
 [ -d "$KSRC" ] || {
     echo "==> descargando $URL"
@@ -27,81 +26,38 @@ command -v ${CROSS}gcc >/dev/null 2>&1 || { echo "FALTA toolchain ${CROSS}gcc"; 
 
 cd "$KSRC"
 
-echo "==> allnoconfig + config RiverOs-kernel (minimal)"
-make ARCH=mips CROSS_COMPILE=$CROSS allnoconfig >/dev/null 2>&1 || true
+echo "==> base: config OpenWrt 25.12.5 ramips/mt7621"
+cp ../config-6.12-mt7621 .config
 
-# Plataforma ralink + SoC MT7621
-scripts/config --enable RALINK
-scripts/config --disable SOC_RT305X --enable SOC_MT7621
-# DTB appended al ELF (choice; para MT7621 no hay builtin)
-# ELF_APPENDED_DTB: objcopy --update-section .appended_dtb=<dtb> embebe el DTB
-# dentro del segmento LOAD (RouterBOOT lo carga). RAW no sirve con ELF.
-scripts/config --disable MIPS_NO_APPENDED_DTB --enable MIPS_ELF_APPENDED_DTB --disable MIPS_RAW_APPENDED_DTB
-# initramfs (rootfs embebido, comprimido xz — mas pequeno que gzip)
+# initramfs (rootfs embebido, xz) — OpenWrt no usa initramfs, esto es RiverOs
 scripts/config --set-str INITRAMFS_SOURCE "$(cd "$(dirname "$0")/.." && pwd)/rootfs"
 scripts/config --enable INITRAMFS_COMPRESSION_XZ
-# core (NET debe ir ANTES que INET/NETDEVICES: allnoconfig apaga NET)
-for s in BLK_DEV_INITRD DEVTMPFS DEVTMPFS_MOUNT TMPFS PROC_FS SYSFS \
-    NET PACKET UNIX INET \
-    NETDEVICES ETHERNET \
-    NET_DSA NET_DSA_MT7530 NET_DSA_MT7530_MDIO PHYLINK NET_SWITCHDEV \
-    NET_VENDOR_MEDIATEK NET_MEDIATEK_SOC; do
-    scripts/config --enable "$s"
-done
-# minimizar tamano: -Os (no -O2)
-scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE --enable CC_OPTIMIZE_FOR_SIZE
+scripts/config --enable BLK_DEV_INITRD
 
-make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
+# DTB appended al ELF (RouterBOOT carga ELF y lee el DTB del segmento LOAD)
+scripts/config --disable MIPS_NO_APPENDED_DTB --enable MIPS_ELF_APPENDED_DTB --disable MIPS_RAW_APPENDED_DTB
 
-# KALLSYMS tiene default y y no es visible sin EXPERT: habilitar EXPERT hace que
-# el "is not set" del .config se respete en olddefconfig (si no, lo revive a y).
-# PITFALL REAL (vivido 2026-08): quitar EXPERT al final NO sirve — el
-# `make vmlinux` interno corre syncconfig que revierte KALLSYMS a y (invisible
-# sin EXPERT). Fix: dejar EXPERT=y en el .config final; EXPERT solo hace
-# VISIBLES los simbolos, no los habilita (allnoconfig los dejo off).
+# --- reducir tamano (netboot limite ~5.48MiB; config OpenWrt completo da 7.4MB) ---
+# EXPERT hace visible KALLSYMS; el ULTIMO --disable KALLSYMS NO debe ir seguido
+# de olddefconfig (lo revierte). QUITAR antes de KALLSYMS no sirve: make vmlinux
+# corre syncconfig que lo revive si EXPERT=off.
 scripts/config --enable EXPERT
 scripts/config --disable KALLSYMS
+# drivers no usados por RiverOs (inflaban el vmlinux)
+scripts/config --disable INPUT --disable HWMON --disable PCI --disable I2C
+
 make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
+scripts/config --disable KALLSYMS
 
-# Consola serial (RB750Gr3 UART ns16550a en palmbus): sin 8250 no hay forma de
-# ver el boot. EARLY_PRINTK da mensajes por 8250 en EARLYPRINTK_8250 (default
-# ttyS0, 115200). Importante para diagnosticar netboot.
-scripts/config --enable SERIAL_8250
-scripts/config --enable SERIAL_8250_CONSOLE
-scripts/config --enable SERIAL_CORE_CONSOLE
-scripts/config --enable SERIAL_8250_NR_UARTS
-scripts/config --set-val SERIAL_8250_NR_UARTS 4
+echo "==> build vmlinux (8 jobs)"
+make ARCH=mips CROSS_COMPILE=$CROSS -j8 vmlinux >/dev/null 2>&1 || \
+    make ARCH=mips CROSS_COMPILE=$CROSS vmlinux
 
-# LED usr (gpio 0) para diagnostico sin serial: init parpadea N veces segun
-# estado (2=init OK, 4=wan presente, 6=consola IP). Sin NEW_LEDS no existe
-# /sys/class/leds. LEDS_GPIO requiere GPIOLIB.
-scripts/config --enable NEW_LEDS
-scripts/config --enable LEDS_CLASS
-scripts/config --enable LEDS_GPIO
-scripts/config --enable GPIOLIB
-scripts/config --enable GPIO_SYSFS
-
-if [ "$1" = "menuconfig" ]; then
-    make ARCH=mips CROSS_COMPILE=$CROSS menuconfig
-fi
-
-echo "==> compilando vmlinux (ELF) + dtbs"
-# load-y: linkear a zona ALTA (0x80b71000) como OpenWrt 22.03.3 — el RouterBOOT
-# netboot solo ejecuta kernels cargados en esa zona (mainline default 0x80001000
-# zona baja NO arranca). load-y override via linea de comando.
-make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j$(nproc) vmlinux dtbs 2>&1 | tail -8
-
-echo "==> DTB dentro del ELF (netboot)"
-# objcopy --update-section reemplaza el buffer .appended_dtb (1MB) con el DTB real
-# dentro del segmento LOAD — el cat al final NO llega a RAM con RouterBOOT.
-ls -la vmlinux $DTB
-mipsel-linux-gnu-strip vmlinux 2>/dev/null || true
-mipsel-linux-gnu-objcopy --update-section .appended_dtb=$DTB vmlinux
-# ENTRY: el ELF apunta a kernel_entry (.ref.text, +4MB, zona ALTA) que RouterBOOT
-# no ejecuta (limite 0x80b81000). Con BOOT_RAW + fill removido (head.S #if 0),
-# __kernel_entry queda en la base EXACTA 0x80b71000 y hace 'j kernel_entry'
-# (como OpenWrt 22.03.3: entry = LOAD base).
-mipsel-linux-gnu-objcopy --set-start 0x80b71000 vmlinux
-cat vmlinux > ../naraos-vmlinux
-ls -la ../naraos-vmlinux
-echo "KERNEL OK: ../naraos-vmlinux ($(stat -c%s ../naraos-vmlinux) bytes)"
+echo "==> DTB + append al ELF (entry=LOAD, seccion .appended_dtb)"
+make ARCH=mips CROSS_COMPILE=$CROSS mt7621_mikrotik_routerboard-750gr3.dtb
+mipsel-linux-gnu-objcopy \
+    --set-start=0x80b71000 \
+    --update-section .appended_dtb="arch/mips/boot/dts/ralink/mt7621_mikrotik_routerboard-750gr3.dtb" \
+    vmlinux "$OUT"
+ls -la "$OUT"
+echo "OK: $OUT ($(stat -c%s "$OUT") bytes)"
