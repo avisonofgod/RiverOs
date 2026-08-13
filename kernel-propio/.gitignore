@@ -1,0 +1,11 @@
+# Artefactos de build (NO versionar)
+busybox-*/
+dropbear-*/
+linux-6.12.103/
+busybox.tar.bz2
+dropbear.tar.bz2
+linux-*.tar.xz
+initramfs.cpio.gz
+naraos-vmlinux
+rootfs/bin/
+rootfs/sbin/

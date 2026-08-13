@@ -1,0 +1,67 @@
+#!/bin/sh
+# RiverOs/kernel-propio init — rootfs RAM minimo
+# Estilo RiverOs (produccion OpenWrt): puertos ethX neutro, consola eth0,
+# dropbear password, hook NARA opcional. Sin UCI/netifd/procd.
+#
+# Boot sequence:
+#   1. mounts basicos
+#   2. rename puertos DSA a ethX (cpu port -> sw0, wan -> eth0, lan2..5 -> eth1..4)
+#   3. consola eth0 = 192.168.99.1/24 (IP de gestion, whitelist NARA 8081)
+#   4. dropbear :22 (genera ed25519 key en primer boot)
+#   5. hook NARA: si /etc/nara/zpot existe, arrancarlo (portal :80 + admin :8081)
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mount -t tmpfs none /tmp
+mkdir -p /dev/pts /run
+mount -t devpts none /dev/pts 2>/dev/null
+echo "RiverOs kernel: $(uname -r) - $(uname -m)"
+
+# --- rename puertos DSA a ethX (mismo orden que rename-ports S08 en OpenWrt) ---
+# Esperar a que el kernel cree los netdevs (hotplug async)
+i=0
+while [ $i -lt 20 ]; do
+    [ -d /sys/class/net/wan ] && [ -d /sys/class/net/lan5 ] && break
+    i=$((i + 1)); sleep 0.5
+done
+# Orden critico: liberar eth0 (cpu port) primero, luego wan -> eth0
+ip link set eth0 name sw0 2>/dev/null
+ip link set wan name eth0 2>/dev/null
+ip link set lan2 name eth1 2>/dev/null
+ip link set lan3 name eth2 2>/dev/null
+ip link set lan4 name eth3 2>/dev/null
+ip link set lan5 name eth4 2>/dev/null
+echo "RiverOs: puertos -> eth0..eth4 (cpu sw0)"
+
+# --- consola eth0 (IP de gestion) ---
+ip link set lo up
+ip link set eth0 up
+ip addr flush dev eth0 2>/dev/null
+ip addr add 192.168.99.1/24 dev eth0
+echo "RiverOs: consola eth0 = 192.168.99.1/24"
+
+# WANs configuradas por NARA se aplican en runtime (fase 2); eth1..eth4 up
+for p in eth1 eth2 eth3 eth4; do
+    [ -d /sys/class/net/$p ] && ip link set $p up 2>/dev/null
+done
+
+# --- dropbear :22 (password auth; NUNCA -g que rechaza password) ---
+mkdir -p /etc/dropbear
+[ -f /etc/dropbear/dropbear_ed25519_host_key ] || \
+    /sbin/dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key -s 256 >/dev/null 2>&1
+/sbin/dropbear -E -p 22 2>/dev/null &
+echo "RiverOs: dropbear :22 listo"
+
+# --- hook NARA (backend zpot si esta presente en flash/overlay) ---
+if [ -x /etc/nara/zpot ]; then
+    mkdir -p /home/naram
+    [ -e /home/naram/static ] || ln -sfn /etc/nara/static /home/naram/static
+    [ -e /home/naram/templates ] || ln -sfn /etc/nara/templates /home/naram/templates
+    [ -e /usr/lib/libc.so.1 ] || ln -sf /lib/libc.so /usr/lib/libc.so.1
+    cd /etc/nara
+    /etc/nara/zpot >/tmp/zpot.log 2>&1 &
+    echo "RiverOs: NARA arrancado (:80 portal, :8081 admin)"
+fi
+
+echo "RiverOs listo: ssh root@192.168.99.1"
+exec sh

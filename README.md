@@ -78,6 +78,16 @@ Bins: `/root/netinstall-openwrt/backups/`
 - Loader dnsmasq: /root/netinstall-openwrt (dhcp-boot=openwrt-22.03.3-initramfs-kernel.bin)
 - Backups: /root/netinstall-openwrt/backups/
 
+## Kernel propio (rama kernel-propio)
+RiverOs-kernel: kernel mainline 6.12.103 cross mipsel + busybox/dropbear estaticos
++ init estilo RiverOs (ver kernel-propio/README.md). Sustituye a OpenWrt como
+capa SO; validado con verify-kernel-image.sh (18/18 PASS, vmlinux 5.58MiB).
+- build.sh: allnoconfig + scripts/config, load-y 0x80b71000, DTB appended
+  objcopy, set-start entry, -Os, KALLSYMS off, initramfs XZ
+- rootfs/init: rename DSA->ethX, consola eth0=192.168.99.1/24, dropbear :22,
+  hook NARA (/etc/nara/zpot -> :80/:8081)
+- Estado: compilado + verificado; netboot TFTP en hardware PENDIENTE
+
 ## Estructura repo
 - scripts/    init.d de RiverOs (riveros-red, dropbear-manual, rename-ports)
 - configs/    configs UCI de referencia

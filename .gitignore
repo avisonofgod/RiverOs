@@ -1,0 +1,6 @@
+
+# kernel-propio (artefactos de build)
+kernel-propio/rootfs/bin/
+kernel-propio/rootfs/sbin/
+kernel-propio/initramfs.cpio.gz
+kernel-propio/naraos-vmlinux
