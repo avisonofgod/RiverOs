@@ -54,14 +54,12 @@ scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE --enable CC_OPTIMIZE_FOR_SI
 make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
 
 # KALLSYMS tiene default y y no es visible sin EXPERT: habilitar EXPERT hace que
-# el "is not set" del .config se respete en olddefconfig (si no, lo revive a y)
+# el "is not set" del .config se respete en olddefconfig (si no, lo revive a y).
+# PITFALL REAL (vivido 2026-08): quitar EXPERT al final NO sirve — el
+# `make vmlinux` interno corre syncconfig que revierte KALLSYMS a y (invisible
+# sin EXPERT). Fix: dejar EXPERT=y en el .config final; EXPERT solo hace
+# VISIBLES los simbolos, no los habilita (allnoconfig los dejo off).
 scripts/config --enable EXPERT
-scripts/config --disable KALLSYMS
-make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
-# EXPERT desbloquea cientos de simbolos (infla el kernel): apagarlo de nuevo
-scripts/config --disable EXPERT
-make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
-# verificar que KALLSYMS sigue off tras re-validar sin EXPERT
 scripts/config --disable KALLSYMS
 make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
 
