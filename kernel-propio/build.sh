@@ -63,6 +63,15 @@ scripts/config --enable EXPERT
 scripts/config --disable KALLSYMS
 make ARCH=mips CROSS_COMPILE=$CROSS olddefconfig >/dev/null 2>&1 || true
 
+# Consola serial (RB750Gr3 UART ns16550a en palmbus): sin 8250 no hay forma de
+# ver el boot. EARLY_PRINTK da mensajes por 8250 en EARLYPRINTK_8250 (default
+# ttyS0, 115200). Importante para diagnosticar netboot.
+scripts/config --enable SERIAL_8250
+scripts/config --enable SERIAL_8250_CONSOLE
+scripts/config --enable SERIAL_CORE_CONSOLE
+scripts/config --enable SERIAL_8250_NR_UARTS
+scripts/config --set-val SERIAL_8250_NR_UARTS 4
+
 if [ "$1" = "menuconfig" ]; then
     make ARCH=mips CROSS_COMPILE=$CROSS menuconfig
 fi
