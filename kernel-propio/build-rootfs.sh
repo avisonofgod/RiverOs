@@ -49,6 +49,12 @@ INIT_SRC="$(cat "$OUT/init")"
 rm -rf "$OUT/bin" "$OUT/sbin" "$OUT/etc" "$OUT/init"
 mkdir -p "$OUT/bin" "$OUT/sbin" "$OUT/etc" "$OUT/proc" "$OUT/sys" "$OUT/dev" "$OUT/tmp" "$OUT/root" "$OUT/run"
 cp busybox-$BB_VER/busybox "$OUT/bin/busybox"
+# Symlinks de applets que usa init (multi-call busybox requiere argv0=applet).
+# Sin ellos: "ip: not found" en el boot. sh es obligatorio (shebang #!/bin/sh).
+for a in sh ash mount umount ip ln mkdir cat sleep echo grep uname dmesg ps \
+    kill rm cp mv touch wc seq head tail; do
+    ln -sf busybox "$OUT/bin/$a"
+done
 cp dropbear-$DB_VER/dropbear "$OUT/sbin/dropbear"
 cp dropbear-$DB_VER/dropbearkey "$OUT/sbin/dropbearkey"
 # NARA backend se agrega en fase 2 (binario 6.4MB; ahora kernel minimal SSH-first)
