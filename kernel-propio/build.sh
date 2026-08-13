@@ -106,8 +106,9 @@ make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 -j$U vmlinux >/dev
 echo "==> DTB + append al ELF (entry=LOAD+0x400, seccion .appended_dtb)"
 make ARCH=mips CROSS_COMPILE=$CROSS load-y=0xffffffff80b71000 dtbs >/dev/null 2>&1 || exit 1
 DTB=arch/mips/boot/dts/ralink/mt7621_mikrotik_routerboard-750gr3.dtb
-# entry = LOAD base + 0x400 (__kernel_entry con BOOT_RAW); RouterBOOT exige <=0x80b81000
-mipsel-linux-gnu-objcopy --set-start=0x80b71400 \
+# entry = LOAD base EXACTA 0x80b71000 (== 22.03.3 funcional; 0x80b71400 NO arranca)
+# quitar .notes: el 22.03.3 no tiene 2o PHDR NOTE (RouterBOOT puede rechazarlo)
+mipsel-linux-gnu-objcopy --set-start=0x80b71000 --remove-section=.notes \
     --update-section .appended_dtb=$DTB vmlinux ../naraos-vmlinux || exit 1
 mipsel-linux-gnu-strip ../naraos-vmlinux 2>/dev/null || true
 
