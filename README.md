@@ -66,6 +66,9 @@ cd imagebuilder
 ./build-netest.sh        # 52 paq: riveros-NETEST-25.12.5.bin (md5 fdb90695)
 # variante Risp-BASE (84 paq, + dnsmasq nftables tc wireguard):
 #   ajustar PACKAGES en build-netest.sh → riveros-Risp-BASE-25.12.5.bin (md5 d4bf6c76)
+# variante Risp-RADIUS (90 paq, + ppp pppoe radius): build-risp-radius.sh
+# variante Risp-RADIUS-EMBEBIDO (backend zpot+static+templates en la imagen):
+#   build-risp-radius-embebido.sh (md5 9b1e4406) — sysupgrade deja Risp completo
 ```
 Bins: `/root/netinstall-openwrt/backups/`
 
