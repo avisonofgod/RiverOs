@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+/dts-v1/;
+
+#include "mt7621_mikrotik_routerboard-7xx.dtsi"
+
+/ {
+	compatible = "mikrotik,routerboard-750gr3", "mediatek,mt7621-soc";
+	model = "MikroTik RouterBOARD 750Gr3";
+
+	aliases {
+		led-boot = &led_usr;
+		led-failsafe = &led_usr;
+		led-running = &led_usr;
+		led-upgrade = &led_usr;
+		label-mac-device = &gmac1;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		pwr {
+			label = "blue:pwr";
+			gpios = <&gpio 16 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		led_usr: usr {
+			label = "green:usr";
+			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x10000000>;
+	};
+};
+
+/* RB750Gr3 REAL: ether1 (wan) = gmac1 RGMII + phy externo ethphy0 (OpenWrt 25.12.5) */
+&mdio {
+	ethphy0: ethernet-phy@0 {
+		reg = <0>;
+		interrupts = <0>;
+		eee-broken-100tx;
+		eee-broken-1000t;
+	};
+};
+
+&gmac1 {
+	status = "okay";
+	label = "wan";
+	phy-handle = <&ethphy0>;
+
+	nvmem-cells = <&macaddr_hard 0>;
+	nvmem-cell-names = "mac-address";
+};
+
+&ethphy0 {
+	/delete-property/ interrupts;
+};
