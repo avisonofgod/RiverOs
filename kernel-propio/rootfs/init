@@ -17,6 +17,23 @@ mkdir -p /dev/pts /run
 mount -t devpts none /dev/pts 2>/dev/null
 echo "RiverOs kernel: $(uname -r) - $(uname -m)"
 
+# --- DIAGNOSTICO SIN SERIAL: LED usr (gpio 0, activo alto) parpadea N veces ---
+# 2 parpadeos = kernel+init OK; 4 = wan/lan5 presentes; 6 = consola IP puesta.
+# Si el LED no parpadea nada: kernel panic antes de init.
+led_blink() {  # $1 = veces
+    local n=$1 i
+    for i in $(seq 1 $n); do
+        echo 1 > /sys/class/leds/usr/brightness 2>/dev/null || \
+            echo 1 > /sys/class/leds/green:usr/brightness 2>/dev/null
+        sleep 0.2
+        echo 0 > /sys/class/leds/usr/brightness 2>/dev/null || \
+            echo 0 > /sys/class/leds/green:usr/brightness 2>/dev/null
+        sleep 0.2
+    done
+}
+led_blink 2
+echo "LED diag: 2 (init OK)"
+
 # --- rename puertos DSA a ethX (mismo orden que rename-ports S08 en OpenWrt) ---
 # Esperar a que el kernel cree los netdevs (hotplug async)
 i=0
