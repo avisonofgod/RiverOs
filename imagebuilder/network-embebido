@@ -1,0 +1,17 @@
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	list ipaddr '127.0.0.1/8'
+
+config globals 'globals'
+	option ula_prefix 'fd5b:6e58:3e1e::/48'
+	option packet_steering '1'
+
+config device
+	option name 'wan'
+
+config interface 'console'
+	option device 'eth0'
+	option proto 'static'
+	option ipaddr '192.168.99.1'
+	option netmask '255.255.255.0'

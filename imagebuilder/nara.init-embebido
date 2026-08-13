@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+# NARA (NAS RADIUS backend) — init script OpenWrt (procd)
+# Instalar: cp nara.init /etc/init.d/nara && chmod +x /etc/init.d/nara
+# Uso: /etc/init.d/nara enable && /etc/init.d/nara start
+START=99
+STOP=10
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command /etc/nara/zpot
+    procd_set_param respawn 3600 5 5
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+
+stop_service() {
+    # NARA no deja procesos hijos; procd lo mata
+    :
+}
