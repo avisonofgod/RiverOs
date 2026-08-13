@@ -17,17 +17,23 @@ mkdir -p /dev/pts /run
 mount -t devpts none /dev/pts 2>/dev/null
 echo "RiverOs kernel: $(uname -r) - $(uname -m)"
 
-# --- DIAGNOSTICO SIN SERIAL: LED usr (gpio 0, activo alto) parpadea N veces ---
+# --- DIAGNOSTICO SIN SERIAL: LED usr (gpio 0, activo ALTO en mainline) parpadea N veces ---
 # 2 parpadeos = kernel+init OK; 4 = wan/lan5 presentes; 6 = consola IP puesta.
 # Si el LED no parpadea nada: kernel panic antes de init.
+led_setup() {
+    # /sys/class/gpio/gpio0/value (active high en mainline: 1=on, 0=off)
+    [ -e /sys/class/gpio/gpio0/value ] || {
+        echo 0 > /sys/class/gpio/export 2>/dev/null
+        echo out > /sys/class/gpio/gpio0/direction 2>/dev/null
+    }
+}
 led_blink() {  # $1 = veces
     local n=$1 i
+    led_setup
     for i in $(seq 1 $n); do
-        echo 1 > /sys/class/leds/usr/brightness 2>/dev/null || \
-            echo 1 > /sys/class/leds/green:usr/brightness 2>/dev/null
+        echo 1 > /sys/class/gpio/gpio0/value 2>/dev/null
         sleep 0.2
-        echo 0 > /sys/class/leds/usr/brightness 2>/dev/null || \
-            echo 0 > /sys/class/leds/green:usr/brightness 2>/dev/null
+        echo 0 > /sys/class/gpio/gpio0/value 2>/dev/null
         sleep 0.2
     done
 }
