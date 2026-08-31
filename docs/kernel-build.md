@@ -16,13 +16,14 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
 2. ./scripts/feeds update -a && install -a
 3. cp configs/profiles/rb750gr3.openwrt.config .config && make defconfig
    (simbolos: CONFIG_TARGET_ramips=y, CONFIG_TARGET_ramips_mt7621=y,
-    CONFIG_TARGET_ramips_mt7621_DEVICE_mikrotik_rb750gr3=y)
+    CONFIG_TARGET_ramips_mt7621_DEVICE_mikrotik_routerboard-750gr3=y — el
+    bloque del device es Device/mikrotik_routerboard-750gr3 en v25.12.0)
 4. make target/linux/prepare V=s
 5. cp configs/kernel/mt7621-rb750gr3.config -> target/linux/ramips/mt7621/config-6.12
    (mecanismo canonico de OpenWrt; NO savedefconfig para reproduccion exacta)
 6. make target/linux/compile V=s -j
-7. make image PROFILE=mikrotik_rb750gr3 CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s
-   -> bin/targets/ramips/mt7621/*mikrotik_rb750gr3-initramfs-kernel.bin
+7. make image PROFILE=mikrotik_routerboard-750gr3 CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s
+   -> bin/targets/ramips/mt7621/*mikrotik_routerboard-750gr3-initramfs-kernel.bin
 
 ## Initramfs netboot
 
@@ -30,15 +31,18 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
   CONFIG_INITRAMFS_SOURCE)
 - Kernel: CONFIG_BLK_DEV_INITRD=y, CONFIG_DEVTMPFS=y, CONFIG_DEVTMPFS_MOUNT=y
 - RouterBOOT recibe el nombre por DHCP filename (dhcp-boot), no requiere
-  renombrar a uImage/fitImage: riveros-mikrotik_rb750gr3-initramfs-kernel.bin
+  renombrar a uImage/fitImage: riveros-mikrotik_routerboard-750gr3-initramfs-kernel.bin
 - Probar SIEMPRE en RAM (netboot) antes de tocar NAND
 
 ## Verificacion de version
 
-- KERNEL_PATCHVER en include/kernel-version.mk del checkout DEBE ser 6.12.94
-  (o adaptar config si difiere del IB 25.12.5)
-- Prueba decisiva: diff configs/kernel/mt7621-rb750gr3.config vs
-  build_dir/target-*/linux-ramips_mt7621/linux-*/.config (tras olddefconfig)
+- KERNEL_PATCHVER en target/linux/ramips/Makefile = 6.12; la version exacta
+  del kernel en target/linux/generic/kernel-6.12 (LINUX_VERSION-6.12 = .71
+  en v25.12.0). El IB 25.12.5 usa 6.12.94 — SI DIFIEREN, localizar el commit
+  de openwrt con 6.12.94:
+    git fetch origin master
+    git log --all --oneline -S 'LINUX_VERSION-6.12 = .94' -- target/linux/generic/kernel-6.12
+  y fijar openwrt.lock a ESE commit (reproducir lo que ya arranca)
 
 ## Checklist
 

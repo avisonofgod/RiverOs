@@ -42,8 +42,8 @@ echo "== 7. artefactos =="
 find build_dir bin/targets -type f \( -name 'vmlinux*' -o -name '*dtb*' \) -print 2>/dev/null | head -20
 
 echo "== 8. imagen initramfs netboot =="
-make image PROFILE="mikrotik_rb750gr3" CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s 2>&1 | tail -8
-ls -lh bin/targets/ramips/mt7621/*initramfs-kernel.bin 2>/dev/null || echo "WARN: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)"
+make image PROFILE="mikrotik_routerboard-750gr3" CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s 2>&1 | tail -8
+ls -lh bin/targets/ramips/mt7621/*mikrotik_routerboard-750gr3-initramfs-kernel.bin 2>/dev/null || echo "WARN: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)"
 
 echo "== 9. verificar version del kernel compilado =="
 strings "$(find build_dir -name vmlinuz -path '*ramips*' -print -quit 2>/dev/null)" 2>/dev/null | grep -m1 'Linux version' || true
