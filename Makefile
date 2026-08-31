@@ -10,6 +10,8 @@
 
 SHELL := /bin/bash
 PROFILE ?= netest
+IB_DIR ?= /root/netinstall-openwrt/imagebuilder-25.12.5
+CLEAN_LOCAL_FILES ?= 0
 REPO := $(CURDIR)
 
 .PHONY: help build verify tree
@@ -17,14 +19,15 @@ REPO := $(CURDIR)
 help:
 	@echo "RiverOs targets:"
 	@echo "  make build PROFILE=<netest|risp-radius|risp-radius-embedded>"
+	@echo "    IB_DIR=<arbol ImageBuilder> CLEAN_LOCAL_FILES=1 (si el IB tiene files/ local)"
 	@echo "  make verify   — checksum + secretos + consistencia"
-	@echo "  make tree     — checkout OpenWrt completo (requiere openwrt.lock fijado)"
+	@echo "  make tree     — checkout OpenWrt completo (usa openwrt.lock)"
 
 build:
-	cd imagebuilder && ./build.sh -p $(PROFILE)
+	cd $(IB_DIR) && CLEAN_LOCAL_FILES=$(CLEAN_LOCAL_FILES) $(REPO)/imagebuilder/build.sh -p $(PROFILE)
 
 verify:
-	cd imagebuilder && ./verify.sh
+	cd $(REPO) && ./imagebuilder/verify.sh
 
 tree:
-	cd scripts && ./checkout-openwrt.sh
+	cd $(REPO) && ./scripts/checkout-openwrt.sh
