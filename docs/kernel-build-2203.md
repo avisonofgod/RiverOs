@@ -49,3 +49,12 @@ DECISIÓN: reducir el 22.03.3 funcional (kernel 5.10.161) de a poco.
 
 - Límite diario 2026-08-31 20:00. Chat nuevo tras llenarse.
 - Herramienta: scripts/bidi_chat_duck.py (click trusted por coordenadas)
+
+## SOLUCION DEL KERNEL 6.12 (2026-08-31)
+
+Load-y 0xffffffff81000000 (16MB) FUE INSUFICIENTE: el vmlinuz (5.17MB con
+initramfs) cargado en 0x80b71000 ocupa hasta 0x810A0000 (16.6MB); el destino
+de descompresion 0x81000000 queda DENTRO del vmlinuz → solape → kernel sin red.
+
+FIX: load-y = 0xffffffff82000000 (32MB) — parche 935-load-y-mt7621-82000000.patch
+Destino 0x82000000 + vmlinux 13.4MB = 0x82D60000 < vmlinuz fin 0x810A0000 ✓
