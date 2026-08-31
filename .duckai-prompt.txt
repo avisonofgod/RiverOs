@@ -1,0 +1,18 @@
+PROMPT PARA DUCK.AI (chat "Revision de RiverOs") — pegar tal cual:
+
+Repositorio RiverOs (github.com/avisonofgod/RiverOs): OpenWrt 25.12.5 (NETEST) minimizado para MikroTik hEX RB750Gr3. Hardware: MT7621 (mipsel_24kc), 256MB RAM, 16MB flash NAND, RouterBOOT 6.47.10 v6 (sysupgrade PLAIN, nunca -v7), MAC DC:2C:6E:7B:2A:76, switch MT7530 DSA (5 puertos GbE eth0..eth4 = ether1..ether5 fisicos + sw0 CPU interno oculto). Kernel base 6.12.94 mejorado: initramfs XZ, DSA MT7530, netfilter/nft, wireguard. Sin LuCI/uhttpd/rpcd. Red manual sin netifd: S98riveros-red (ip puro: cpu->sw0, ether1->eth0, 192.168.5.1/24), dropbear manual S95 (key ed25519 /etc/dropbear), rename-ports START=08. Deshabilitados: network, firewall, odhcpd, uhttpd, rpcd, ucitrack, sysntpd, cron. pass root rbadmin2026 (cambiar en produccion).
+
+Estructura del repo:
+- scripts/ -> riveros-red, dropbear-manual, rename-ports (init.d)
+- configs/ -> uci-configs.txt
+- imagebuilder/ -> build-netest.sh (52 paq, md5 fdb90695), build-risp-radius.sh (90 paq +ppp pppoe radius), build-risp-radius-embebido.sh (md5 9b1e4406), archivos sueltos: hostname, network, network-embebido, shadow, dropbear, system, risp.init-embebido (NO hay subcarpeta files/ pese a que el README la menciona)
+- overlay-backup/ -> snapshots overlay
+- README.md
+
+Ramas: master (local) y kernel-propio (solo en remoto, commit 6cab5bc) — objetivo: evolucionar hacia kernel propio real. El gestor ISP Risp (repo aparte) se instala encima y usa chains NAT hotspot y PPPoE.
+
+Ultimos commits: d56e9bd "rename: gestor ISP NARA/Zpot -> Risp"; 9910864 "NARA-RADIUS-EMBEBIDO v2: +kmod-nft-nat (chains NAT hotspot) md5 9fd16ce4"
+
+El router fisico esta desconectado; quiero avanzar en desarrollo de kernel. Dame una vision DIFERENTE y hoja de ruta: 1) que contiene el repo y que DEBE contener para desarrollo de kernel serio (estructura ideal: defconfig, parches, toolchain, scripts de build, documentacion), 2) pasos concretos del 1 al N para pasar de kernel mejorado de ImageBuilder a kernel propio sin brickear (netboot initramfs 22.03.3 como red de seguridad), 3) errores/riesgos en el estado actual, 4) mejoras e implementaciones prioritarias. Se critico y especifico, con comandos donde aplique.
+
+NO uses herramientas de lectura de URLs: responde solo con el contexto que te doy aqui.

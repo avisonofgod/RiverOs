@@ -1,0 +1,882 @@
+Repositorio RiverOs (github.com/avisonofgod/RiverOs): OpenWrt 25.12.5 (NETEST) minimizado para MikroTik hEX RB750Gr3. Hardware: MT7621 (mipsel_24kc), 256MB RAM, 16MB flash NAND, RouterBOOT 6.47.10 v6 (sysupgrade PLAIN, nunca -v7), MAC DC:2C:6E:7B:2A:76, switch MT7530 DSA (5 puertos GbE eth0..eth4 = ether1..ether5 fisicos + sw0 CPU interno oculto). Kernel base 6.12.94 mejorado: initramfs XZ, DSA MT7530, netfilter/nft, wireguard. Sin LuCI/uhttpd/rpcd. Red manual sin netifd: S98riveros-red (ip puro: cpu->sw0, ether1->eth0, 192.168.5.1/24), dropbear manual S95 (key ed25519 /etc/dropbear), rename-ports START=08. Deshabilitados: network, firewall, odhcpd, uhttpd, rpcd, ucitrack, sysntpd, cron. pass root rbadmin2026 (cambiar en produccion).
+
+Estructura del repo:
+- scripts/ -> riveros-red, dropbear-manual, rename-ports (init.d)
+- configs/ -> uci-configs.txt
+- imagebuilder/ -> build-netest.sh (52 paq, md5 fdb90695), build-risp-radius.sh (90 paq +ppp pppoe radius), build-risp-radius-embebido.sh (md5 9b1e4406), archivos sueltos: hostname, network, network-embebido, shadow, dropbear, system, risp.init-embebido (NO hay subcarpeta files/ pese a que el README la menciona)
+- overlay-backup/ -> snapshots overlay
+- README.md
+
+Ramas: master (local) y kernel-propio (solo en remoto, commit 6cab5bc) — objetivo: evolucionar hacia kernel propio real. El gestor ISP Risp (repo aparte) se instala encima y usa chains NAT hotspot y PPPoE.
+
+Ultimos commits: d56e9bd "rename: gestor ISP NARA/Zpot -> Risp"; 9910864 "NARA-RADIUS-EMBEBIDO v2: +kmod-nft-nat (chains NAT hotspot) md5 9fd16ce4"
+
+El router fisico esta desconectado; quiero avanzar en desarrollo de kernel. Dame una vision DIFERENTE y hoja de ruta: 1) que contiene el repo y que DEBE contener para desarrollo de kernel serio (estructura ideal: defconfig, parches, toolchain, scripts de build, documentacion), 2) pasos concretos del 1 al N para pasar de kernel mejorado de ImageBuilder a kernel propio sin brickear (netboot initramfs 22.03.3 como red de seguridad), 3) errores/riesgos en el estado actual, 4) mejoras e implementaciones prioritarias. Se critico y especifico, con comandos donde aplique.
+
+GPT-5.6 Luna
+Researching OpenWrt roadmap
+
+I need to respond in Spanish since the user has provided specifics about their repository and is asking for critical roadmap details. This seems specialized and may require me to search for the current OpenWrt version. They’ve explicitly mentioned the repository and branch, which is current-ish, so I might need a web search for the latest state of the repo and look into related terms due to its proper noun. A focused search of the repo and OpenWrt docs could work.
+
+Searching the web
+
+github avisonofgod RiverOs OpenWrt MikroTik hEX RB750Gr3 6cab5bc
+
+github.com
+gist.github.com
+forum.mikrotik.com
+vantc.net
+Hide Reasoning
+
+La visión correcta es esta: RiverOs todavía es un producto construido sobre OpenWrt; no es aún un proyecto de kernel. El salto importante no consiste en modificar más el ImageBuilder, sino en convertir el repositorio en una capa reproducible sobre un checkout completo de OpenWrt: configuración del target, parches mantenibles, compilación del kernel, generación de imágenes, pruebas y procedimiento de recuperación.
+
+El objetivo debería ser:
+
+text
+OpenWrt completo
+   ├── target ramips/mt7621
+   ├── perfil mikrotik_rb750gr3
+   ├── kernel config reproducible
+   ├── parches DTS/driver/kernel
+   ├── paquetes RiverOs
+   ├── imágenes initramfs y sysupgrade
+   └── pruebas y artefactos verificables
+
+El hEX pertenece al target ramips/mt7621, y existen antecedentes de problemas de actualización de este modelo cuando se cambia de versión, por lo que el proceso debe tratar el netboot como mecanismo permanente de recuperación, no como una medida excepcional. 
+GitHub
+
+1. Qué contiene actualmente el repositorio
+
+Por lo descrito, contiene principalmente:
+
+Scripts de arranque:
+riveros-red
+dropbear-manual
+rename-ports
+Configuraciones UCI de referencia.
+Scripts de ImageBuilder.
+Ficheros sueltos para construir overlays:
+hostname
+network
+shadow
+dropbear
+system
+scripts del gestor Risp
+Snapshots de overlays.
+Documentación.
+Una separación conceptual entre:
+imagen NETEST
+imagen Risp/RADIUS
+imagen Risp/RADIUS embebida
+Un branch remoto denominado kernel-propio, aunque por la descripción no hay todavía una infraestructura completa de kernel propio.
+
+Eso es suficiente para personalizar una imagen, pero no para mantener una variante de kernel a largo plazo.
+
+Lo que no debería considerarse todavía “kernel propio”
+
+No son kernel propio:
+
+Añadir módulos mediante ImageBuilder.
+Cambiar el target/linux indirectamente.
+Usar un kernel de OpenWrt con una selección distinta de paquetes.
+Modificar únicamente el overlay.
+Llamar “kernel mejorado” a un kernel upstream más un conjunto de módulos.
+
+El primer kernel propio real será aquel que pueda reconstruirse desde cero mediante un commit fijado de OpenWrt, un config-6.x controlado y una serie de parches versionados.
+
+2. Estructura ideal del repositorio
+
+Recomendaría separar el producto RiverOs del árbol completo de OpenWrt:
+
+text
+RiverOs/
+├── README.md
+├── LICENSE
+├── Makefile
+├── VERSION
+├── feeds.conf.default
+│
+├── configs/
+│   ├── profiles/
+│   │   ├── netest.config
+│   │   ├── risp-radius.config
+│   │   └── risp-radius-embedded.config
+│   ├── kernel/
+│   │   └── mt7621-rb750gr3.config
+│   ├── files/
+│   │   ├── etc/
+│   │   ├── lib/
+│   │   └── sbin/
+│   └── uci/
+│
+├── patches/
+│   ├── target/
+│   │   └── ramips/
+│   ├── kernel/
+│   │   ├── 0001-rb750gr3-dts.patch
+│   │   ├── 0002-mt7530-dsa.patch
+│   │   └── 0003-initramfs-xz.patch
+│   └── backports/
+│
+├── package/
+│   └── riveros/
+│       ├── riveros-base/
+│       ├── riveros-red/
+│       ├── riveros-dropbear/
+│       ├── riveros-portnames/
+│       └── Makefile
+│
+├── scripts/
+│   ├── checkout-openwrt.sh
+│   ├── prepare-tree.sh
+│   ├── apply-patches.sh
+│   ├── configure.sh
+│   ├── build.sh
+│   ├── build-initramfs.sh
+│   ├── build-sysupgrade.sh
+│   ├── inspect-image.sh
+│   ├── verify-image.sh
+│   └── netboot-recovery.sh
+│
+├── tests/
+│   ├── shell/
+│   ├── qemu/
+│   ├── image/
+│   └── hardware/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── hardware-rb750gr3.md
+│   ├── boot-chain.md
+│   ├── dsa-port-mapping.md
+│   ├── flashing.md
+│   ├── recovery-netboot.md
+│   ├── reproducible-builds.md
+│   └── release-checklist.md
+│
+├── ci/
+│   └── github-actions/
+│
+└── openwrt.lock
+Elementos imprescindibles
+openwrt.lock
+
+Debe fijar:
+
+text
+OpenWrt commit: <hash>
+Feeds:
+  packages: <hash>
+  luci: <hash o disabled>
+  routing: <hash o disabled>
+  telephony: <hash o disabled>
+
+No conviene compilar contra master, main o una rama móvil. Hay que fijar una revisión concreta:
+
+bash
+git clone https://github.com/openwrt/openwrt.git openwrt
+cd openwrt
+git checkout <commit-fijado>
+Defconfig de producto
+
+No hay que guardar solamente el resultado final de .config. Mantener:
+
+text
+configs/profiles/netest.config
+configs/profiles/risp-radius.config
+configs/profiles/risp-radius-embedded.config
+
+Y generar el .config:
+
+bash
+make defconfig
+./scripts/diffconfig.sh > ../configs/profiles/netest.config
+Configuración del kernel
+
+Guardar la configuración del kernel separadamente:
+
+text
+configs/kernel/mt7621-rb750gr3.config
+
+Después de modificarla:
+
+bash
+make target/linux/clean
+make target/linux/prepare V=s
+make kernel_menuconfig
+make target/linux/update
+
+El resultado debe quedar revisado en Git. No se deben aceptar cambios masivos sin inspeccionar:
+
+bash
+git diff -- target/linux/ramips
+Parches
+
+Cada parche debe tener:
+
+Número secuencial.
+Descripción.
+Motivo.
+Kernel afectado.
+Riesgo.
+Cómo probarlo.
+Si es upstreamable o específico de RiverOs.
+
+Ejemplo:
+
+text
+0002-mt7530-dsa-rb750gr3-port-labels.patch
+
+No conviene editar directamente el árbol de OpenWrt sin generar parches: esos cambios desaparecen al actualizar el checkout.
+
+Paquetes propios
+
+Los scripts S95 y S98 deberían convertirse progresivamente en paquetes OpenWrt:
+
+text
+package/riveros/riveros-red/
+package/riveros/riveros-dropbear/
+package/riveros/riveros-portnames/
+
+Ventajas:
+
+Instalación/desinstalación limpia.
+Dependencias explícitas.
+Integración con procd.
+Menos diferencias invisibles en el overlay.
+Posibilidad de pruebas automatizadas.
+3. Riesgos técnicos detectados
+A. Confusión entre DSA, switch CPU y nombres de interfaz
+
+La afirmación:
+
+text
+eth0..eth4 = ether1..ether5 + sw0 CPU interno
+
+debe verificarse en el sistema real. En DSA, el puerto CPU no suele ser un puerto Ethernet normal que deba exponerse o configurarse como un puerto físico. El nombre exacto puede variar entre kernel, DTS y versión de OpenWrt.
+
+Hay que documentar el resultado de:
+
+bash
+ip -br link
+ls -l /sys/class/net
+for i in /sys/class/net/*; do
+    echo "=== $i"
+    cat "$i/address" 2>/dev/null
+    readlink "$i/device" 2>/dev/null
+done
+
+
+dmesg | grep -Ei 'dsa|mt7530|mt7621|ethernet|mdio'
+
+Y comprobar cada puerto con un cable y enlace físico:
+
+bash
+ethtool eth0
+ethtool eth1
+ethtool eth2
+ethtool eth3
+ethtool eth4
+
+No debe confiarse únicamente en el orden de enumeración eth0, eth1, etc.
+
+B. Red manual sin netifd
+
+Deshabilitar network, firewall y odhcpd puede ser válido para un appliance muy controlado, pero aumenta mucho el riesgo operativo:
+
+No hay gestión declarativa del estado.
+No hay rollback automático.
+Los reinicios pueden dejar interfaces sin dirección.
+El firewall puede desaparecer completamente.
+El gestor Risp y riveros-red pueden tener carreras de arranque.
+El comportamiento tras una actualización es más difícil de predecir.
+
+Especialmente peligroso es deshabilitar firewall mientras se utilizan chains NAT del gestor Risp. Es necesario demostrar quién crea, carga y mantiene las reglas nftables.
+
+Inspecciones mínimas:
+
+bash
+nft list ruleset
+ip rule
+ip route
+ip -d link
+logread
+
+Mi recomendación es no reactivar todo necesariamente, pero sí sustituir los scripts SysV por servicios procd con:
+
+respawn
+dependencias explícitas
+validación de interfaces
+timeout
+rollback
+logs claros
+C. Contraseña conocida dentro de una imagen
+
+La contraseña:
+
+text
+rbadmin2026
+
+no debe aparecer en una imagen distribuible ni en el repositorio. Aunque se cambie después, la imagen inicial queda comprometida si se instala en una red no confiable.
+
+Mejor:
+
+Solo acceso SSH por clave durante el primer arranque.
+Generación de clave o contraseña mediante consola de provisioning.
+Deshabilitar login por contraseña después del bootstrap.
+No incluir claves privadas en Git.
+No incluir dropbear_rsa_host_key o equivalentes compartidas entre dispositivos.
+
+Revisar el árbol:
+
+bash
+grep -RniE 'password|passwd|shadow|BEGIN .*PRIVATE KEY|rbadmin' .
+D. Ficheros sueltos y README inconsistente
+
+El README menciona files/, pero no existe esa carpeta. Eso es una señal de que la compilación no es completamente reproducible.
+
+Hay que eliminar la ambigüedad:
+
+text
+configs/files/...
+
+o:
+
+text
+files/...
+
+pero el script debe usar una única ruta y fallar si falta:
+
+bash
+set -Eeuo pipefail
+
+
+[ -d "$FILES_DIR" ] || {
+    echo "ERROR: falta $FILES_DIR" >&2
+    exit 1
+}
+E. MD5 como identificación principal
+
+Los MD5 actuales son útiles para compatibilidad histórica, pero insuficientes para releases nuevas. Añadir:
+
+bash
+sha256sum bin/targets/ramips/mt7621/* > SHA256SUMS
+sha512sum bin/targets/ramips/mt7621/* > SHA512SUMS
+
+También conviene guardar:
+
+text
+openwrt-commit.txt
+kernel-release.txt
+.config
+config.buildinfo
+feeds.buildinfo
+manifest
+F. “OpenWrt 25.12.5” y “kernel 6.12.94”
+
+Deben validarse como una relación concreta, no solo como etiquetas. El release de OpenWrt, el commit del árbol, el LINUX_VERSION y los parches aplicados deben quedar registrados en el artefacto.
+
+En cada imagen:
+
+bash
+cat /etc/openwrt_release
+uname -a
+cat /etc/os-release
+
+En el host:
+
+bash
+grep -E '^(CONFIG_TARGET|CONFIG_LINUX|CONFIG_EXTERNAL|CONFIG_PACKAGE)' .config
+make kernel_version
+
+Si 6.12.94 es un kernel modificado, debe existir:
+
+versión exacta del tarball;
+hash del tarball;
+lista de parches;
+git diff;
+configuración final;
+procedimiento de actualización.
+G. Falta de validación de capacidad real
+
+En 16 MB NAND, 52 o 90 paquetes pueden ser técnicamente posibles, pero el tamaño final no basta. Hay que comprobar:
+
+bash
+du -h bin/targets/ramips/mt7621/*
+ubinize -v ...
+
+Y dentro del dispositivo:
+
+bash
+df -h
+df -i
+cat /proc/mtd
+ubinfo -a
+mount
+
+El riesgo no es solo llenar la imagen. También puede faltar espacio de overlay para:
+
+claves Dropbear;
+logs;
+bases de datos RADIUS;
+reglas generadas;
+actualizaciones;
+archivos temporales.
+
+Con 256 MB de RAM, el límite principal será probablemente flash, CPU y tablas de estado, no memoria física.
+
+4. Ruta concreta del ImageBuilder al kernel propio
+Paso 1: congelar el estado conocido
+
+Crear una rama de referencia:
+
+bash
+git checkout master
+git tag -a riveros-imagebuilder-baseline -m "Baseline ImageBuilder"
+git push origin riveros-imagebuilder-baseline
+
+Guardar los artefactos exactos:
+
+text
+manifest
+.sha256
+.config o perfiles
+scripts de build
+overlay completo
+README generado
+
+No se debe comenzar el kernel mientras el baseline no sea reproducible.
+
+Paso 2: probar el build dos veces
+
+Construir desde dos directorios limpios:
+
+bash
+./imagebuilder/build-netest.sh
+rm -rf /tmp/riveros-build-2
+./imagebuilder/build-netest.sh
+
+Comparar:
+
+bash
+sha256sum build-1/* build-2/*
+diff -ru build-1/manifest build-2/manifest
+
+Si no son idénticos, documentar qué parte cambia: timestamps, claves host, metadata o compresión.
+
+Paso 3: obtener un checkout completo de OpenWrt
+bash
+git clone https://github.com/openwrt/openwrt.git ../openwrt
+cd ../openwrt
+git checkout <commit-fijado>
+./scripts/feeds update -a
+./scripts/feeds install -a
+
+No se debe mezclar el árbol completo con el ImageBuilder como si fueran equivalentes. El ImageBuilder reutiliza un kernel ya compilado; el árbol completo permite modificarlo.
+
+Paso 4: importar primero el producto, sin tocar el kernel
+
+Copiar solamente:
+
+paquetes RiverOs;
+perfiles;
+overlays;
+scripts de generación.
+
+Configurar:
+
+bash
+make menuconfig
+
+Selecciones aproximadas:
+
+text
+Target System       -> MediaTek Ralink MIPS
+Subtarget           -> MT7621
+Target Profile      -> MikroTik RouterBOARD RB750Gr3
+
+Después importar la configuración:
+
+bash
+cp ../RiverOs/configs/profiles/netest.config .config
+make defconfig
+
+Construir una imagen equivalente a la de ImageBuilder:
+
+bash
+make -j"$(nproc)" V=s
+
+En este punto todavía no debe haber cambios de kernel.
+
+Paso 5: comparar contra la imagen anterior
+
+Comprobar:
+
+bash
+bin/targets/ramips/mt7621/
+cat bin/targets/ramips/mt7621/*.manifest
+
+Comparar:
+
+paquetes;
+DTS;
+tamaño;
+tipo de imagen;
+particiones;
+compresión;
+módulos;
+scripts de arranque.
+
+No flashear hasta que la imagen producida por el árbol completo sea funcionalmente equivalente.
+
+Paso 6: reproducir el kernel existente sin modificaciones
+
+Guardar la configuración:
+
+bash
+make target/linux/prepare V=s
+cp build_dir/target-*/linux-ramips_mt7621/linux-*/.config \
+   ../RiverOs/configs/kernel/mt7621-rb750gr3.config
+
+Crear el parche o configuración mediante el mecanismo de OpenWrt, no editando build_dir manualmente.
+
+Paso 7: modificar una sola cosa
+
+La primera modificación debe ser inocua y observable, por ejemplo:
+
+añadir un identificador de build al banner;
+cambiar una opción de debug;
+añadir un CONFIG_ no crítico;
+añadir un mensaje DTS no funcional.
+
+Compilar y comprobar que el artefacto contiene el cambio:
+
+bash
+make target/linux/compile V=s
+strings bin/targets/ramips/mt7621/*initramfs* | grep -i riveros
+
+No comenzar simultáneamente con DSA, NAND, compresión y red.
+
+Paso 8: añadir parches por capas
+
+Orden recomendado:
+
+DTS y compatibilidad de placa.
+Ethernet/MT7530/DSA.
+NAND/UBI/particiones.
+Netfilter/nftables.
+WireGuard.
+Ajustes de rendimiento.
+Debug y telemetría.
+Optimización de tamaño.
+
+Cada parche debe compilarse y probarse individualmente.
+
+Para revisar el conjunto:
+
+bash
+make target/linux/refresh
+git diff -- target/linux/
+Paso 9: construir siempre dos imágenes
+
+Para cada commit de kernel:
+
+text
+1. initramfs-kernel.bin
+2. squashfs-sysupgrade.bin
+
+La primera es para arrancar temporalmente por red. La segunda es para NAND.
+
+No usar la imagen de sysupgrade como sustituto del initramfs de netboot.
+
+Paso 10: usar el initramfs 22.03.3 como rescate
+
+El procedimiento debe ser:
+
+Preparar un host Linux aislado.
+Conectar físicamente el host al puerto que el bootloader utilice para Etherboot.
+Configurar DHCP/TFTP únicamente sobre esa interfaz.
+Servir el initramfs-kernel conocido de OpenWrt 22.03.3.
+Configurar RouterBOOT temporalmente para arrancar por Ethernet una vez.
+Arrancar el hEX sin escribir NAND.
+Verificar que el kernel recuperador ve la NAND y la red.
+Desde ese entorno, transferir la imagen candidata.
+Volver a arrancar por NAND solo después de validarla.
+
+La idea esencial es que el initramfs de recuperación se ejecuta en RAM y no depende de que la imagen instalada sea arrancable. Procedimientos de netboot para este modelo usan DHCP/BOOTP/TFTP y un initramfs-kernel.bin; también se recomienda separar el ordenador de recuperación del equipo utilizado para la configuración del router. 
+GitHub
+
+Ejemplo de servidor TFTP, adaptándolo a la interfaz real:
+
+bash
+sudo dnsmasq \
+  --no-daemon \
+  --port=0 \
+  --interface=enp3s0 \
+  --bind-interfaces \
+  --enable-tftp \
+  --tftp-root=/srv/tftp \
+  --dhcp-range=192.168.88.50,192.168.88.100,255.255.255.0,1h \
+  --dhcp-boot=openwrt-22.03.3-ramips-mt7621-mikrotik_rb750gr3-initramfs-kernel.bin \
+  --dhcp-host=DC:2C:6E:7B:2A:76,192.168.88.10
+
+Antes de conectar el router:
+
+bash
+sudo tcpdump -ni enp3s0 'port 67 or port 68 or port 69'
+
+Debe observarse:
+
+solicitud DHCP del bootloader;
+transferencia TFTP;
+arranque;
+solicitud DHCP o dirección esperada del initramfs.
+
+No se debe asumir que la MAC proporcionada corresponde al puerto utilizado por Etherboot. Confirmarla en el propio equipo y documentar qué interfaz física acepta el netboot.
+
+Paso 11: validar el kernel arrancado por netboot
+
+En el sistema de rescate:
+
+bash
+uname -a
+dmesg
+cat /proc/cmdline
+cat /proc/mtd
+ip -br link
+ip -br addr
+
+Antes de escribir:
+
+bash
+dmesg | grep -Ei 'nand|ubi|ubifs|mt7530|dsa|mt7621|watchdog'
+Paso 12: instalar solo después de pruebas
+
+Transferir la imagen:
+
+bash
+scp openwrt-*-squashfs-sysupgrade.bin root@192.168.5.1:/tmp/
+
+Comprobar hash en ambos extremos:
+
+bash
+sha256sum openwrt-*-squashfs-sysupgrade.bin
+ssh root@192.168.5.1 sha256sum /tmp/openwrt-*-squashfs-sysupgrade.bin
+
+Nunca automatizar un sysupgrade sin validar previamente:
+
+bash
+sysupgrade -T /tmp/openwrt-*-squashfs-sysupgrade.bin
+
+Y comprobar que la imagen corresponde exactamente al modelo, formato y flujo de arranque del RB750Gr3. Mantener explícitamente la regla operativa existente: sysupgrade PLAIN, nunca -v7, hasta que el formato haya sido probado de manera independiente.
+
+Paso 13: primera instalación destructiva controlada
+
+Para el primer kernel propio:
+
+usar sysupgrade -n;
+no conservar configuración vieja;
+tener consola física o un segundo ordenador;
+dejar funcionando el servidor netboot;
+tener preparada una imagen estable anterior;
+registrar hora, LEDs, DHCP, TFTP y logs.
+
+No hacer el primer ensayo mediante una sesión SSH dependiente de la red que se está cambiando.
+
+Paso 14: prueba de rollback
+
+El rollback debe ser un procedimiento documentado:
+
+text
+1. Apagar el router.
+2. Preparar DHCP/TFTP con initramfs 22.03.3.
+3. Configurar Etherboot temporal.
+4. Arrancar en RAM.
+5. Confirmar que la placa responde.
+6. Escribir la imagen estable conocida.
+7. Arrancar desde NAND.
+8. Restaurar únicamente configuración validada.
+
+No considerar terminado el proyecto hasta haber ejecutado este rollback con éxito.
+
+5. Mejoras prioritarias
+Prioridad 0: seguridad y control de daños
+
+Antes de avanzar:
+
+Eliminar la contraseña fija.
+Retirar cualquier clave privada del repositorio.
+Crear un procedimiento de netboot probado.
+Verificar la MAC y el puerto de recuperación.
+Añadir SHA-256.
+Etiquetar una imagen estable.
+Documentar /proc/mtd, UBI y mapeo de puertos.
+Prioridad 1: abandonar la dependencia del overlay opaco
+
+Convertir los scripts en paquetes:
+
+text
+riveros-red
+riveros-dropbear
+riveros-portnames
+riveros-base
+
+Cada paquete debe instalar sus ficheros mediante Build/Install, con permisos explícitos:
+
+make
+define Package/riveros-red/install
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/riveros-red \
+		$(1)/etc/init.d/riveros-red
+endef
+Prioridad 2: arrancar de forma declarativa
+
+Si se mantiene red manual, implementarla como un único servicio procd bien definido. Debe:
+
+esperar a que exista la interfaz;
+comprobar que el enlace está disponible;
+configurar dirección y rutas idempotentemente;
+borrar únicamente su estado anterior;
+no destruir reglas de otros servicios;
+registrar errores.
+
+Evitar scripts que simplemente ejecuten una secuencia de ip sin verificar resultados.
+
+Prioridad 3: separar imagen base y aplicaciones ISP
+
+No mezclar completamente kernel, red base y Risp. Mantener tres capas:
+
+text
+RiverOs-base
+   ├── kernel y DTS
+   ├── boot
+   ├── red mínima
+   ├── SSH
+   └── diagnóstico
+
+
+RiverOs-edge
+   ├── nftables
+   ├── NAT
+   ├── WireGuard
+   └── métricas
+
+
+Risp
+   ├── hotspot
+   ├── PPPoE
+   ├── RADIUS
+   └── chains específicas
+
+Así una actualización del kernel no obliga a reconstruir lógicamente todo el gestor ISP.
+
+Prioridad 4: pruebas automatizadas
+
+Pruebas estáticas:
+
+bash
+shellcheck scripts/*.sh
+shfmt -d scripts/
+shellcheck package/riveros/*/files/*
+
+Pruebas de imagen:
+
+bash
+unsquashfs -ll image.bin
+binwalk image.bin
+
+Pruebas de configuración:
+
+bash
+grep -RniE '192\.168\.5\.1|eth[0-4]|sw0' .
+
+Pruebas de arranque:
+
+interfaz esperada;
+dirección 192.168.5.1/24;
+SSH;
+host keys únicas;
+nftables;
+módulos WireGuard;
+acceso a los cinco puertos.
+Prioridad 5: diagnóstico compilado en una imagen especial
+
+Mantener dos perfiles:
+
+text
+netest-minimal
+netest-debug
+
+La imagen debug puede incluir:
+
+strace;
+tcpdump;
+ethtool;
+kmod-* de diagnóstico;
+perf si el target lo permite;
+símbolos o logs de kernel;
+opciones de debug DSA/NAND.
+
+La imagen final debe ser mínima; la imagen de desarrollo no.
+
+Prioridad 6: rendimiento medido
+
+No optimizar por intuición. Crear una matriz:
+
+Prueba	Sin offload	Con offload	WireGuard	PPPoE	NAT
+TCP LAN-LAN					
+TCP WAN-LAN					
+UDP					
+conexiones/s					
+CPU máxima					
+RAM libre					
+
+Comandos útiles:
+
+bash
+cat /proc/cpuinfo
+cat /proc/meminfo
+cat /proc/interrupts
+top -H
+nft list ruleset
+
+Para tráfico controlado, usar iperf3, con el servidor en otro equipo y pruebas repetibles.
+
+6. Qué cambios haría primero en RiverOs
+
+Orden práctico:
+
+text
+Commit 1: corregir README y estructura files/
+Commit 2: eliminar secretos y claves compartidas
+Commit 3: añadir SHA256SUMS y metadatos de build
+Commit 4: crear openwrt.lock
+Commit 5: importar perfil NETEST al árbol completo
+Commit 6: producir imagen equivalente al ImageBuilder
+Commit 7: empaquetar riveros-red
+Commit 8: empaquetar dropbear y rename-ports
+Commit 9: reproducir exactamente el kernel actual
+Commit 10: crear imagen initramfs RiverOs
+Commit 11: probarla por netboot
+Commit 12: primer parche DTS inocuo
+Commit 13: probar DSA y mapeo físico
+Commit 14: revisar NAND/UBI/sysupgrade
+Commit 15: probar rollback
+Commit 16: integrar Risp como capa separada
+
+El primer hito serio no es “compila el kernel 6.12.94”. Es este:
+
+Desde un checkout limpio y un commit conocido, RiverOs genera una imagen initramfs que arranca por TFTP, una imagen sysupgrade válida para RB750Gr3, reproduce el comportamiento de red esperado y puede volver atrás mediante el initramfs 22.03.3.
+
+Hasta alcanzar ese punto, modificar drivers o el DTS sería aumentar el riesgo sin disponer de una cadena de recuperación y auditoría suficientemente sólida.
+
+Search Results
+MikroTik RouterBOARD 750Gr3 (RB750Gr3) sysupgrade ...
+github.com
+Install OpenWRT on Mikrotik hEX (RB750Gr3) using ...
+github.com
+Related Searches
+OpenWrt kernel development custom target mt7621 ImageBuilder SDK Buildroot
+MikroTik hEX RB750Gr3 netboot initramfs RouterBOOT recovery
+OpenWrt 25.12 mt7621 kernel patches DSA MT7530
+2nd opinion
