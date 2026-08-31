@@ -1,18 +1,17 @@
 # RiverOs openwrt.lock — fija el arbol OpenWrt usado por el build
 #
-# Referencia estable: tag v25.12.0 de openwrt/openwrt (verificado 2026-08-30):
-#   OPENWRT_COMMIT=4da53efc2fe744601e6189492dbd06b8930d72b8
-# (tag v25.12.0^{} — 0e1f39e3... es el tag ligero)
+# Referencia: commit de openwrt/openwrt que define kernel 6.12.94 (el del IB
+# 25.12.5 del proyecto — snapshot de master, NO tag v25.12.0 que usa 6.12.71):
+#   git log --all --oneline -S 'LINUX_VERSION-6.12 = .94' -- target/linux/generic/kernel-6.12
+#   -> 6bad5f2050 "kernel: bump 6.12 to 6.12.94" (verificado 2026-08-30)
+#   LINUX_KERNEL_HASH-6.12.94 = e998a232b9418db3301cb58468e291a4f41d6ab8306029b30d991f56251dc8d2
 #
-# NOTA: el ImageBuilder local del proyecto se llama 25.12.5 (snapshot de
-# trabajo sobre el release). Antes del primer build reproducible hay que
-# mapear el commit exacto del arbol que genera 25.12.5:
-#   git -C openwrt log --oneline -1   # tras checkout del commit candidato
-# y comparar bin/ vs el bin GOOD (manifest + sha256).
+# NOTA: el tag v25.12.0 (4da53ef) usa kernel 6.12.71 — NO reproduce el IB.
+# master actual usa 6.12.107.
 #
 # Formato:
-#   OPENWRT_COMMIT=<sha256 del tag>
-#   OPENWRT_VERSION=25.12.0   # (o 25.12.5 snapshot)
+#   OPENWRT_COMMIT=<sha256 del commit>
+#   OPENWRT_VERSION=25.12.5-snapshot
 #   KERNEL_VERSION=6.12.94
 #   FEEDS_PACKAGES=<sha del feed packages>
 #   FEEDS_ROUTING=<sha o disabled>
@@ -20,8 +19,8 @@
 #   FEEDS_TELEPHONY=<sha o disabled>
 #
 # Regla: NO compilar contra master/main; siempre un commit concreto.
-OPENWRT_COMMIT=4da53efc2fe744601e6189492dbd06b8930d72b8
-OPENWRT_VERSION=25.12.0
+OPENWRT_COMMIT=6bad5f2050
+OPENWRT_VERSION=25.12.5-snapshot
 KERNEL_VERSION=6.12.94
 FEEDS_PACKAGES=disabled
 FEEDS_ROUTING=disabled
