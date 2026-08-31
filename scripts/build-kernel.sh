@@ -57,8 +57,10 @@ make target/linux/compile V=s -j"$(nproc)"
 echo "== 7. artefactos =="
 find build_dir bin/targets -type f \( -name 'vmlinux*' -o -name '*dtb*' \) -print 2>/dev/null | head -20
 
-echo "== 8. imagen initramfs netboot =="
-make image PROFILE="mikrotik_routerboard-750gr3" CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s 2>&1 | tail -8
+echo "== 8. imagen initramfs netboot (arbol completo: make = world) =="
+# NOTA: 'make image' es del ImageBuilder; en el arbol completo las imagenes
+# se generan con make (world) o package/compile package/install target/install
+make package/compile package/install target/install V=s -j"$(nproc)" 2>&1 | tail -8
 ls -lh bin/targets/ramips/mt7621/*mikrotik_routerboard-750gr3-initramfs-kernel.bin 2>/dev/null || echo "WARN: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)"
 
 echo "== 9. verificar version del kernel compilado =="
