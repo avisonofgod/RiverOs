@@ -2,13 +2,13 @@
 
 Capa base del sistema (SO): **NETEST / OpenWrt → RiverOs** (kernel básico mejorado).
 Contiene SOLO el sistema: imagen ImageBuilder, scripts de red/arranque, configs.
-El gestor ISP (binario + código) vive en el repo separado **Risp** (avisonofgod/Risp).
+El gestor ISP (binario + código) vive en el repo separado **Risp**.
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Risp (gestor ISP)   repo: Risp    │
-│   zpot :80 portal, :8081 admin              │
-│   instala en /etc/risp + /etc/init.d/risp   │
+│ Risp (gestor ISP)        repo: Risp          │
+│   risp :80 portal, :8081 admin               │
+│   instala en /etc/risp + /etc/init.d/risp    │
 ├─────────────────────────────────────────────┤
 │ RiverOs (ESTE REPO — capa SO)               │
 │   kernel 6.12.94 mejorado (initramfs XZ,    │
@@ -31,7 +31,7 @@ El gestor ISP (binario + código) vive en el repo separado **Risp** (avisonofgod
 - console: **ether1 = eth0**, IP 192.168.5.1/24, DHCP .100-.249 (si dnsmasq activo)
 - pass root: rbadmin2026 (CAMBIAR en producción)
 - sin LuCI/uhttpd/rpcd (eliminados via apk del)
-- 52 paquetes (bin NETEST) / 84 paquetes (bin Risp-BASE, + nft/tc/wg/dnsmasq)
+- 52 paquetes (bin NETEST) / 84 paquetes (bin RISP-BASE, + nft/tc/wg/dnsmasq)
 
 ## Nombres de puertos (ethX neutro, nivel kernel)
 Los puertos se renombran a una forma neutra (sin wan/lan — los puertos son solo
@@ -64,10 +64,10 @@ en otro puerto antes de tocar.
 ```sh
 cd imagebuilder
 ./build-netest.sh        # 52 paq: riveros-NETEST-25.12.5.bin (md5 fdb90695)
-# variante Risp-BASE (84 paq, + dnsmasq nftables tc wireguard):
-#   ajustar PACKAGES en build-netest.sh → riveros-Risp-BASE-25.12.5.bin (md5 d4bf6c76)
-# variante Risp-RADIUS (90 paq, + ppp pppoe radius): build-risp-radius.sh
-# variante Risp-RADIUS-EMBEBIDO (backend zpot+static+templates en la imagen):
+# variante RISP-BASE (84 paq, + dnsmasq nftables tc wireguard):
+#   ajustar PACKAGES en build-netest.sh → riveros-RISP-BASE-25.12.5.bin (md5 d4bf6c76)
+# variante RISP-RADIUS (90 paq, + ppp pppoe radius): build-risp-radius.sh
+# variante RISP-RADIUS-EMBEBIDO (backend risp+static+templates en la imagen):
 #   build-risp-radius-embebido.sh (md5 9b1e4406) — sysupgrade deja Risp completo
 ```
 Bins: `/root/netinstall-openwrt/backups/`
@@ -85,7 +85,7 @@ Bins: `/root/netinstall-openwrt/backups/`
 - imagebuilder/    build-netest.sh + files/ (hostname, network, shadow, dropbear, system)
 
 ## Relacion con Risp
-- Risp instala encima de esta base: zpot (binario mipsel) en /etc/risp,
+- Risp instala encima de esta base: risp (binario mipsel) en /etc/risp,
   /etc/init.d/risp (procd START=99), symlinks /home/rispm, static/ y templates/.
 - El frontend Risp configura ethX (ip-addresses, mwan, vlans, bridges...) usando
   los nombres reales del kernel (eth0..eth4) — ver repo Risp.

@@ -1,6 +1,6 @@
 #!/bin/bash
-# RiverOs bin Risp-RADIUS: ImageBuilder 25.12.5 mt7621, 84+ paq
-# = Risp-BASE (dnsmasq nftables tc wireguard) + ppp + pppoe + RADIUS (ppp-mod-radius)
+# RiverOs bin RISP-RADIUS: ImageBuilder 25.12.5 mt7621, 84+ paq
+# = RISP-BASE (dnsmasq nftables tc wireguard) + ppp + pppoe + RADIUS (ppp-mod-radius)
 # Uso: cd imagebuilder-25.12.5 && FILES=<repo>/imagebuilder bash build-risp-radius.sh
 set -e
 FILES_DIR="${FILES:?FILES=ruta a imagebuilder/ del repo}"

@@ -1,13 +1,13 @@
 #!/bin/bash
-# RiverOs bin Risp-RADIUS-EMBEBIDO: ImageBuilder 25.12.5 mt7621, 90 paq
-# = Risp-RADIUS (dnsmasq nftables tc wireguard ppp pppoe radius) + backend
-#   Risp embebido en la imagen (zpot + static + templates + init.d + symlinks)
-# Flujo: flash base NETEST -> sysupgrade a este bin = Risp completo, sin
+# RiverOs bin RISP-RADIUS-EMBEBIDO: ImageBuilder 25.12.5 mt7621, 90 paq
+# = RISP-RADIUS (dnsmasq nftables tc wireguard ppp pppoe radius) + backend
+#   RISP embebido en la imagen (risp + static + templates + init.d + symlinks)
+# Flujo: flash base NETEST -> sysupgrade a este bin = RISP completo, sin
 # reinstalar backend. Consola eth0=192.168.99.1 tras rename-ports (S08).
 # Uso: cd imagebuilder-25.12.5 && FILES=<arbol files con backend> bash build-risp-radius-embebido.sh
 # FILES esperado (estructura):
 #   etc/config/{network,dropbear,system} etc/hostname etc/shadow
-#   etc/risp/{zpot,static/,templates/}
+#   etc/risp/{risp,static/,templates/}
 #   etc/init.d/{risp,rename-ports} etc/rc.d/{S99risp,S08rename-ports}
 #   usr/lib/libc.so.1 -> /lib/libc.so   home/rispm -> /etc/risp
 set -e

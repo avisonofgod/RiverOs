@@ -1,5 +1,5 @@
 #!/bin/sh /etc/rc.common
-# Risp (NAS RADIUS backend) — init script OpenWrt (procd)
+# RISP (NAS RADIUS backend) — init script OpenWrt (procd)
 # Instalar: cp risp.init /etc/init.d/risp && chmod +x /etc/init.d/risp
 # Uso: /etc/init.d/risp enable && /etc/init.d/risp start
 START=99
@@ -9,7 +9,7 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command /etc/risp/zpot
+    procd_set_param command /etc/risp/risp
     procd_set_param respawn 3600 5 5
     procd_set_param stdout 1
     procd_set_param stderr 1
@@ -17,6 +17,6 @@ start_service() {
 }
 
 stop_service() {
-    # Risp no deja procesos hijos; procd lo mata
+    # RISP no deja procesos hijos; procd lo mata
     :
 }
