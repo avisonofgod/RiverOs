@@ -1,8 +1,27 @@
 # RiverOs — Compilacion del kernel propio (desde fuente)
 
 Objetivo: compilar el kernel 6.12.94 desde el codigo fuente en el arbol
-OpenWrt completo (commit 4da53ef, v25.12.0), con la config real de RiverOs.
-Orientacion: Duck.ai (2026-08-30, chats kernel-cero y fase2).
+OpenWrt completo (commit 6bad5f2050, snapshot master con kernel 6.12.94),
+con la config real de RiverOs. Orientacion: Duck.ai (2026-08-30, chats
+kernel-cero, fase2, fase3, ronda-compile).
+
+## RESULTADOS REALES (2026-08-31, PC Debian 8 hilos)
+
+- Toolchain: make tools/install toolchain/install -j8 → 38m28s
+  (gcc 14.3.0 r32295; FORCE_UNSAFE_CONFIGURE=1 requerido como root)
+- Kernel: make target/linux/compile -j8 → 16m32s · vmlinux 58.6MB,
+  vmlinuz 3.56MB, DTBs listos
+- Prueba decisiva .config: diff vs IB = 99/7557 lineas benignas y ESTABLE
+  post-compile (CC_VERSION/RUSTC auto-detect, INITRAMFS_SOURCE vaciada,
+  simbolos obsoletos eliminados; invariantes intactas)
+- World (paquetes+imagenes): make -j8 → 2 intentos (1er fallo = carrera
+  -j8 en ustream-ssl, transitorio; 2do OK 3m39s)
+- Artefactos (bin/targets/ramips/mt7621/):
+  - openwrt-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin
+    (5.16MB, ELF MIPS32 + DTB rb750gr3, sha256 e6c3876a...)
+  - ...-squashfs-sysupgrade.bin (5.37MB, plain — NUNCA -v7)
+- Copias: /root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin
+  (netboot) + backups/riveros-PROPIO-6.12.94-sysupgrade.bin (candidato)
 
 ## Decision
 
