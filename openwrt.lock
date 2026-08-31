@@ -1,0 +1,19 @@
+# RiverOs openwrt.lock — fija el arbol OpenWrt usado por el build
+#
+# PENDIENTE: fijar el commit real del ImageBuilder 25.12.5 antes del primer
+# build reproducible. Obtencion:
+#   cd imagebuilder-25.12.5   # (arbol descargado de downloads.openwrt.org)
+#   cat .version               # ej: 25.12.5
+#   # el commit exacto del release se obtiene del tag en el repo OpenWrt:
+#   git ls-remote https://github.com/openwrt/openwrt.git refs/tags/v25.12.5
+#
+# Formato (despues de fijar):
+#   OPENWRT_COMMIT=<sha256 del tag v25.12.5>
+#   OPENWRT_VERSION=25.12.5
+#   KERNEL_VERSION=6.12.94
+#   FEEDS_PACKAGES=<sha del feed packages>
+#   FEEDS_ROUTING=<sha o disabled>
+#   FEEDS_LUCI=<sha o disabled>
+#   FEEDS_TELEPHONY=<sha o disabled>
+#
+# Regla: NO compilar contra master/main; siempre un commit concreto.
