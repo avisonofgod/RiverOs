@@ -29,11 +29,24 @@ make defconfig
 echo "== 3. KERNEL_PATCHVER (debe coincidir con 6.12.94 del IB) =="
 grep -nE 'KERNEL_PATCHVER|LINUX_VERSION' include/kernel-version.mk target/linux/ramips/Makefile 2>/dev/null || true
 
-echo "== 4. target/linux/prepare =="
+echo "== 4. inyectar kernel config real ANTES de prepare -> config-6.12 =="
+cp "$REPO/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
+
+echo "== 5. target/linux/prepare (aplica config-6.12 + parches) =="
 make target/linux/prepare V=s 2>&1 | tee /tmp/openwrt-linux-prepare.log | tail -5
 
-echo "== 5. inyectar kernel config real -> target/linux/ramips/mt7621/config-6.12 =="
-cp "$REPO/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
+echo "== 5b. PRUEBA DECISIVA: diff config vs build_dir/.config =="
+KDIR="$(find "$PWD/build_dir" -path '*/linux-6.12.94' -type d | head -n1)"
+if [ -n "$KDIR" ] && [ -f "$KDIR/.config" ]; then
+  if diff -u "$REPO/configs/kernel/mt7621-rb750gr3.config" "$KDIR/.config" > /tmp/kernel-config.diff; then
+    echo "OK: config EXACTA (sin diferencias)"
+  else
+    echo "WARN: diferencias en config (ver /tmp/kernel-config.diff, primeras 40):"
+    head -40 /tmp/kernel-config.diff || true
+  fi
+else
+  echo "WARN: no encontre $KDIR/.config — revisar prepare"
+fi
 
 echo "== 6. kernel compile =="
 make target/linux/compile V=s -j"$(nproc)"
