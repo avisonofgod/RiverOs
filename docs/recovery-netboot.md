@@ -45,3 +45,33 @@ sysupgrade -n /tmp/riveros-GOOD-25.12.5.bin   # -n = no conservar config
 7. Arrancar desde NAND. 8. Restaurar config validada.
 
 No considerar el proyecto terminado hasta ejecutar este rollback con exito.
+
+## Prueba del KERNEL PROPIO por netboot (reversible, sin tocar NAND)
+
+Artefacto: `/root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin`
+(sha256 e6c3876a..., generado del arbol OpenWrt completo, commit 6bad5f2050).
+
+1. Backup del dnsmasq: `cp /etc/dnsmasq.conf /root/netinstall-openwrt/backups/`
+2. Config temporal `/root/netinstall-openwrt/dnsmasq-riveros.conf`:
+   ```
+   interface=<INTERFAZ_LAN>   bind-interfaces   port=0
+   dhcp-range=192.168.5.10,192.168.5.50,255.255.255.0,12h
+   dhcp-boot=riveros-6.12.94-initramfs-kernel.bin
+   enable-tftp   tftp-root=/root/netinstall-openwrt
+   ```
+3. `dnsmasq --test` → `systemctl stop dnsmasq` → `dnsmasq --no-daemon
+   --conf-file=/root/netinstall-openwrt/dnsmasq-riveros.conf` (primer plano)
+4. Otra consola: `tcpdump -ni <IF> 'udp port 67 or 68 or 69'`
+5. RouterBOOT arranca por Ethernet → kernel 6.12.94 + DTB + initramfs en RAM
+6. Red del initramfs OpenWrt PURO (sin scripts RiverOs): br-lan 192.168.1.1
+   (NO eth0/192.168.5.1 — eso es del overlay). Acceso: ping/ssh root@192.168.1.1
+   o desde serie: ip link (nombres reales DSA) + ip addr add manual
+7. Validar: uname -a (6.12.94), dmesg (mt7621/gmac/mdio/mt7530/dsa/nand/ubi,
+   sin oops/panic), cat /proc/mtd, ip -details link, mount (rootfs RAM,
+   SIN UBI como raiz), busybox, dropbear, reboot -f (2 arranques = reproducible)
+8. Comparar contra GOOD: diff proc-mtd / proc-partitions / ip-link
+9. Fin: Ctrl-C en dnsmasq → `systemctl start dnsmasq` (vuelve el 22.03.3)
+
+SOLO tras validar el initramfs en RAM: sysupgrade -T (desde el initramfs
+RiverOs) del backups/riveros-PROPIO-6.12.94-sysupgrade.bin → si OK,
+sysupgrade -n. NUNCA -v7. fwtool -i para inspeccionar metadatos antes.
