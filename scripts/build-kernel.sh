@@ -18,6 +18,9 @@ LOCK="$REPO/openwrt.lock"
 COMMIT="$(grep -E '^OPENWRT_COMMIT=' "$LOCK" | cut -d= -f2)"
 cd "$OPENWRT"
 
+# OpenWrt rechaza configure como root sin esto (tools/tar, etc.)
+export FORCE_UNSAFE_CONFIGURE=1
+
 echo "== 1. feeds =="
 ./scripts/feeds update -a
 ./scripts/feeds install -a
