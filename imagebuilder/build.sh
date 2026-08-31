@@ -32,6 +32,17 @@ source "$PROFILE_FILE"
 FILES_DIR="${FILES:-$REPO/configs/files}"
 [ -d "$FILES_DIR/etc" ] || { echo "ERROR: falta overlay $FILES_DIR/etc" >&2; exit 1; }
 
+# PITFALL: el ImageBuilder local puede tener su propio files/ (overlay local)
+# que make image FUSIONA y puede PISAR al FILES externo -> build no determinista.
+if [ -d "files/etc" ] && [ -n "$(ls files/etc 2>/dev/null)" ]; then
+  echo "WARN: existe files/ local en el ImageBuilder ($PWD/files) que se fusionara con $FILES_DIR" >&2
+  echo "WARN: para build puro: mv files files.bak  (o CLEAN_LOCAL_FILES=1)" >&2
+  if [ "${CLEAN_LOCAL_FILES:-0}" = "1" ]; then
+    echo "[build] CLEAN_LOCAL_FILES=1: moviendo files/ -> files.bak"
+    mv files "files.bak.$(date +%s)"
+  fi
+fi
+
 # Check de seguridad: credencial por defecto en imagen de release
 if [ "$PROD" = "1" ]; then
   if grep -RniE 'rbadmin2026' "$FILES_DIR" 2>/dev/null; then

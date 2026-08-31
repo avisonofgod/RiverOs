@@ -1,0 +1,8 @@
+# RiverOs .gitignore — artefactos de build y temporales
+imagebuilder/out/
+*.bin
+*.log
+build_dir/
+staging_dir/
+tmp/
+.duckai-*
