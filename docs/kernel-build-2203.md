@@ -58,3 +58,20 @@ de descompresion 0x81000000 queda DENTRO del vmlinuz → solape → kernel sin r
 
 FIX: load-y = 0xffffffff82000000 (32MB) — parche 935-load-y-mt7621-82000000.patch
 Destino 0x82000000 + vmlinux 13.4MB = 0x82D60000 < vmlinuz fin 0x810A0000 ✓
+
+## ✅ KERNEL 6.12.94 PROPIO ARRANCA (2026-08-31)
+
+VALIDADO: Linux OpenWrt 6.12.94 #0 SMP mips — netboot en RB750Gr3, red DHCP
+(wan=ether1 → 192.168.88.128), SSH dropbear (root/rbadmin2026).
+
+RECETA COMPLETA (los 6 fixes):
+1. Entry vmlinuz = 0x80b71000 (CONFIG_ZBOOT_LOAD_ADDRESS)
+2. CONFIG_MIPS_RAW_APPENDED_DTB=y (lzma-loader SOLO copia DTB con RAW)
+3. load-y MT7621 = 0xffffffff82000000 (32MB — ANTI-SOLAPE: vmlinux 13.4MB a
+   0x82000000, arriba del vmlinuz 5.17MB que termina en 0x810A0000)
+   (16MB fue insuficiente: 0x81000000 < 0x810A0000)
+4. DTB del 6.12: compilar DTS del árbol (cpp -I$D -I$K/include + dtc)
+5. preinit 99_red_manual.sh (hook initramfs) + shadow rbadmin2026
+6. Initramfs del árbol (make completo — el initramfs VACÍO era carrera de targets)
+
+Bin: riveros-6.12.94-v10-initramfs-kernel.bin (f2f800db, 5.17MB)
