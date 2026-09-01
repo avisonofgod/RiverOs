@@ -75,3 +75,20 @@ RECETA COMPLETA (los 6 fixes):
 6. Initramfs del árbol (make completo — el initramfs VACÍO era carrera de targets)
 
 Bin: riveros-6.12.94-v10-initramfs-kernel.bin (f2f800db, 5.17MB)
+
+## ✅ v13 VALIDADO (2026-08-31 18:45)
+
+Kernel 6.12.94 propio + initramfs reducido (43 paq) por netboot:
+- DHCPACK .130, SSH OK (dropbear rbadmin2026)
+- quitados: kmod-usb*, gpio-button, leds, apk-mbedtls, uclient, getrandom,
+  procd-seccomp, logd
+- bin: riveros-6.12.94-v13 (sha 259f34db, 4.92MB, entry 0x80b71000)
+
+PISO del 6.12 (deps duras): base-files, busybox, dropbear, procd (ucode,
+libubus, urngd, ubox), ubus/ubusd, uci, netifd (dep de base-files),
+fstools/fwtool/keyring/usign/ubi-utils/jsonfilter/jshn (deps de base-files),
+libmbedtls (dropbear), libnl-tiny (netifd), kernel.
+
+NOTA build: el initramfs del bin se congela (touch @1782344232 + cmp -s);
+para cambiar paquetes: package/install + borrar vmlinux-initramfs* y
+usr/initramfs_data.cpio* + target/linux/install (o clean+world completo).
