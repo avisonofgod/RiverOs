@@ -2,8 +2,8 @@
 
 ## Antes de flashear un bin
 
-- [ ] Arquitectura mipsel_24kc confirmada (MT7621)
-- [ ] `core/scripts/check-config.sh` OK (16 simbolos)
+- [x] Arquitectura mipsel_24kc confirmada (MT7621)
+- [x] `core/scripts/check-config.sh` OK (16 simbolos)
 - [ ] Bin copiado a backups con nombre GOOD
 - [ ] restore.sh + loader dnsmasq operativos
 - [ ] backup + export de la config actual del router
