@@ -1,9 +1,9 @@
 --- a/drivers/net/dsa/Kconfig
 +++ b/drivers/net/dsa/Kconfig
 @@ -59,7 +59,7 @@ config NET_DSA_MT7530_MMIO
- 	tristate "MediaTek MT7530 MMIO interface driver"
- 	depends on NET_DSA_MT7530
- 	depends on HAS_IOMEM
- 	imply MEDIATEK_GE_SOC_PHY
+ '	tristate "MediaTek MT7530 MMIO interface driver"
+ '	depends on NET_DSA_MT7530
+ '	depends on HAS_IOMEM
+ '	imply MEDIATEK_GE_SOC_PHY
 +	select REGMAP_MMIO
- 	help
+ '	help
