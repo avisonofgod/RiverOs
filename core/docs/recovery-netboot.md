@@ -49,7 +49,7 @@ No considerar el proyecto terminado hasta ejecutar este rollback con exito.
 ## Prueba del KERNEL PROPIO por netboot (reversible, sin tocar NAND)
 
 Artefacto: `/root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin`
-(sha256 e6c3876a..., generado del arbol OpenWrt completo, commit 6bad5f2050).
+(sha256 e6c3876a..., generado del arbol RiverOs completo, commit 6bad5f2050).
 
 1. Backup del dnsmasq: `cp /etc/dnsmasq.conf /root/netinstall-openwrt/backups/`
 2. Config temporal `/root/netinstall-openwrt/dnsmasq-riveros.conf`:
@@ -63,7 +63,7 @@ Artefacto: `/root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin`
    --conf-file=/root/netinstall-openwrt/dnsmasq-riveros.conf` (primer plano)
 4. Otra consola: `tcpdump -ni <IF> 'udp port 67 or 68 or 69'`
 5. RouterBOOT arranca por Ethernet → kernel 6.12.94 + DTB + initramfs en RAM
-6. Red del initramfs OpenWrt PURO (sin scripts RiverOs): br-lan 192.168.1.1
+6. Red del initramfs RiverOs PURO (sin scripts RiverOs): br-lan 192.168.1.1
    (NO eth0/192.168.5.1 — eso es del overlay). Acceso: ping/ssh root@192.168.1.1
    o desde serie: ip link (nombres reales DSA) + ip addr add manual
 7. Validar: uname -a (6.12.94), dmesg (mt7621/gmac/mdio/mt7530/dsa/nand/ubi,

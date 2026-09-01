@@ -36,7 +36,7 @@ DECISIÓN: reducir el 22.03.3 funcional (kernel 5.10.161) de a poco.
 - IP del servidor 192.168.88.2 choca con wan del router: usar .3
 - dnsmasq de netboot se atasca tras horas: reiniciar loader
 - enp0s31f6 puede quedar NO-CARRIER (cable) — el "ruido DHCP" 98:e7:43 ES el propio PC
-- make check NO existe en OpenWrt (sin suite); verificación = readelf + netboot físico
+- make check NO existe en RiverOs (sin suite); verificación = readelf + netboot físico
 
 ## Validado
 
@@ -61,7 +61,7 @@ Destino 0x82000000 + vmlinux 13.4MB = 0x82D60000 < vmlinuz fin 0x810A0000 ✓
 
 ## ✅ KERNEL 6.12.94 PROPIO ARRANCA (2026-08-31)
 
-VALIDADO: Linux OpenWrt 6.12.94 #0 SMP mips — netboot en RB750Gr3, red DHCP
+VALIDADO: Linux RiverOs 6.12.94 #0 SMP mips — netboot en RB750Gr3, red DHCP
 (wan=ether1 → 192.168.88.128), SSH dropbear (root/rbadmin2026).
 
 RECETA COMPLETA (los 6 fixes):
@@ -118,7 +118,7 @@ EXPERIMENTAL (kernel minimo, SIN RED — pendiente):
 - kernel-min-6.12.config (465 =y desde ~1100): vmlinux 58.6MB -> 40.2MB
   pero el DSA/eth no levanta: faltan deps del MT7530 MMIO.
   Fixes aplicados: MEDIATEK_GE_PHY=y (phy gmac), NET_DSA_MT7530_MMIO=y +
-  select REGMAP_MMIO (parche 0001, bug del backport OpenWrt).
+  select REGMAP_MMIO (parche 0001, bug del backport RiverOs).
   v16 (4.39MB) y v17/v18 sin DHCP — el eth no trae enlace.
   PENDIENTE: verificar dmesg del DSA (consola serie no disponible);
   probar mas deps: NET_DSA_TAG_MTK, MTD_SPI_NOR, GPIO_MT7621, RESET_MT7621.

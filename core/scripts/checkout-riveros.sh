@@ -1,5 +1,5 @@
 #!/bin/bash
-# RiverOs checkout-openwrt.sh — checkout completo de OpenWrt fijado por openwrt.lock
+# RiverOs checkout-openwrt.sh — checkout completo de RiverOs fijado por openwrt.lock
 #
 # Requisitos: openwrt.lock con OPENWRT_COMMIT fijado (ver openwrt.lock).
 # Uso: ./checkout-openwrt.sh [destino]   (destino por defecto: ../openwrt)
@@ -19,7 +19,7 @@ if [ -d "$DEST/.git" ]; then
   echo "[checkout] actualizando $DEST"
   git -C "$DEST" fetch --all --tags
 else
-  echo "[checkout] clonando OpenWrt en $DEST"
+  echo "[checkout] clonando RiverOs en $DEST"
   git clone https://github.com/openwrt/openwrt.git "$DEST"
 fi
 
