@@ -128,7 +128,7 @@ PARA REPRODUCIR v14: config-6.12 = core/configs/kernel/mt7621-rb750gr3.config
 
 ## v19 — IDENTIDAD RiverOs (2026-08-31)
 
-CONFIG_VERSION_DIST="RiverOs" + CONFIG_VERSION_NUMBER="25.12-NETEST" en el
+CONFIG_VERSION_DIST="RiverOs" + CONFIG_VERSION_NUMBER="25.12-RiverOs" en el
 .config del arbol. El binario generado: riveros-ramips-...-750gr3-initramfs-
 kernel.bin (prefijo riveros-, sha 5634e590, 4.90MB). Verificado sin netboot:
 - readelf: entry 0x80b71000, .appended_dtb PROGBITS (0x3203), < 6.66MiB

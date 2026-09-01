@@ -27,7 +27,7 @@ patches/                       <- parches locales documentados
 ```
 
 ## RiverOS-MIPS (firmware mínimo arrancable)
-- Kernel Linux 6.12.94 (RiverOs 25.12-NETEST) para MT7621
+- Kernel Linux 6.12.94 (RiverOs 25.12-RiverOs) para MT7621
 - Device Tree RB750Gr3 (wan=ether1, lan2-5=ether2-5)
 - Initramfs con preinit (red manual + dropbear)
 - Contrato RouterBOOT v6: entry 0x80b71000 + MIPS_RAW_APPENDED_DTB=y

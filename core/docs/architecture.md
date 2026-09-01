@@ -29,7 +29,7 @@
 
 ## Estado de madurez (hoja de ruta kernel-propio)
 
-1. [x] ImageBuilder → bins NETEST / RISP-BASE / RISP-RADIUS / EMBEBIDO
+1. [x] ImageBuilder → bins RiverOs / RISP-BASE / RISP-RADIUS / EMBEBIDO
 2. [~] Repo estructurado (configs/profiles, package/riveros, build.sh)
 3. [ ] openwrt.lock fijado (commit RiverOs 25.12.5)
 4. [ ] Imagen equivalente desde checkout completo de RiverOs
