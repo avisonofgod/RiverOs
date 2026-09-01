@@ -1,7 +1,7 @@
 #!/bin/sh /etc/rc.common
 # rename-ports — renombra los puertos DSA del hEX a ethX neutro.
 #
-# El DTS de OpenWrt nombra los puertos como wan/lan2..lan5 y el puerto CPU
+# El DTS de RiverOs nombra los puertos como wan/lan2..lan5 y el puerto CPU
 # como eth0. Para que NARA presente eth0..eth4 (y el cpu port quede como
 # sw0), renombramos en el boot ANTES de que netifd configure la red.
 #
