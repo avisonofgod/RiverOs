@@ -21,8 +21,9 @@ echo "== 1. archivos del repo -> arbol =="
 cp "$REPO/core/configs/target-rb750gr3.config" .config
 # 1b. kernel config (fuente primaria)
 cp "$REPO/core/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
-# 1c. parches del kernel
+# 1c. parches del kernel (limpiar viejos del arbol para evitar duplicados)
 mkdir -p target/linux/ramips/patches-6.12
+rm -f target/linux/ramips/patches-6.12/*load-y* target/linux/ramips/patches-6.12/*mt7530* target/linux/ramips/patches-6.12/935-* target/linux/ramips/patches-6.12/936-*
 cp "$REPO"/patches/kernel/*.patch target/linux/ramips/patches-6.12/
 # 1d. files del device (preinit, network, init.d; shadow se genera en build)
 mkdir -p target/linux/ramips/mt7621/base-files
