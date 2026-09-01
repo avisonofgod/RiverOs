@@ -1,8 +1,9 @@
 #!/bin/bash
 # RiverOs build-kernel.sh — compila el kernel 6.12 desde el arbol base
+# usando SOLO los archivos del repositorio RiverOs (core + targets + patches).
 #
-# Flujo validado (RB750Gr3, netboot): config-6.12 del repo -> prepare ->
-# compile -> install -> initramfs-kernel.bin.
+# Flujo (RB750Gr3, netboot): copia configs/parches/files del repo al arbol ->
+# prepare -> compile -> install -> initramfs-kernel.bin.
 #
 # Uso: ./build-kernel.sh [arbol_dir]   (default: ../openwrt)
 set -Eeuo pipefail
@@ -15,10 +16,21 @@ OPENWRT="${1:-$REPO/../openwrt}"
 cd "$OPENWRT"
 export FORCE_UNSAFE_CONFIGURE=1
 
-echo "== 1. kernel config (fuente primaria del repo) =="
+echo "== 1. archivos del repo -> arbol =="
+# 1a. .config del target (paquetes del initramfs)
+cp "$REPO/configs/target-rb750gr3.config" .config
+# 1b. kernel config (fuente primaria)
 cp "$REPO/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
+# 1c. parches del kernel
+mkdir -p target/linux/ramips/patches-6.12
+cp "$REPO"/patches/kernel/*.patch target/linux/ramips/patches-6.12/
+# 1d. files del device (preinit, network, init.d, shadow se genera en build)
+mkdir -p target/linux/ramips/mt7621/base-files
+cp -r "$REPO"/targets/mips/devices/mikrotik-rb750gr3/files/* target/linux/ramips/mt7621/base-files/
+chmod 0755 target/linux/ramips/mt7621/base-files/lib/preinit/99_red_manual.sh 2>/dev/null || true
+chmod 0755 target/linux/ramips/mt7621/base-files/etc/init.d/* 2>/dev/null || true
 
-echo "== 2. target/linux/prepare (aplica config-6.12 + parches) =="
+echo "== 2. target/linux/prepare (config-6.12 + parches) =="
 make target/linux/prepare V=s 2>&1 | tee /tmp/riveros-linux-prepare.log | tail -5
 
 echo "== 3. kernel compile =="
