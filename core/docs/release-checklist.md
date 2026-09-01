@@ -23,9 +23,9 @@
 
 | Variante | Paquetes | Uso | Recomendacion |
 |---|---|---|---|
-| netest | 52 | Pruebas de imagen | Desarrollo |
+| riveros | 52 | Pruebas de imagen | Desarrollo |
 | risp-radius | 90 | ISP con RADIUS/PPPoE | Produccion ISP |
 | risp-radius-embebido | 90+backend | Risp en la imagen | Produccion cerrada |
 
-Bins historicos (md5): NETEST fdb90695, RISP-BASE d4bf6c76,
+Bins historicos (md5): RiverOs fdb90695, RISP-BASE d4bf6c76,
 RISP-RADIUS-EMBEBIDO 9b1e4406.
