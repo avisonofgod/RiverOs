@@ -5,8 +5,6 @@
 ```
 ┌─────────────────────────────────────────────┐
 │ Risp (gestor ISP)        repo: avisonofgod/Risp │
-│   risp :80 portal, :8081 admin               │
-│   instala en /etc/risp + /etc/init.d/risp    │
 ├─────────────────────────────────────────────┤
 │ RiverOs (ESTE REPO — capa SO)               │
 │   kernel 6.12.94 mejorado (initramfs XZ,    │
@@ -30,8 +28,8 @@
 ## Estado de madurez (hoja de ruta kernel-propio)
 
 1. [x] ImageBuilder → bins RiverOs / RISP-BASE / RISP-RADIUS / EMBEBIDO
-2. [~] Repo estructurado (configs/profiles, package/riveros, build.sh)
-3. [ ] openwrt.lock fijado (commit RiverOs 25.12.5)
+2. [x] Repo estructurado (core + targets + patches)
+3. [x] Arbol base tag v25.12.5 (checkout-riveros.sh)
 4. [ ] Imagen equivalente desde checkout completo de RiverOs
 5. [ ] Kernel config 6.12.94 extraida a configs/kernel/
 6. [ ] Parches versionados (DTS → MT7530 → NAND → nft → wg)
