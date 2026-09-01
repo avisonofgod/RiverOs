@@ -1,5 +1,5 @@
 #!/bin/sh /etc/rc.common
-# RISP (NAS RADIUS backend) — init script OpenWrt (procd)
+# RISP (NAS RADIUS backend) — init script RiverOs (procd)
 # Instalar: cp risp.init /etc/init.d/risp && chmod +x /etc/init.d/risp
 # Uso: /etc/init.d/risp enable && /etc/init.d/risp start
 START=99
