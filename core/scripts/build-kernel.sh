@@ -1,6 +1,6 @@
 #!/bin/bash
 # RiverOs build-kernel.sh — compila el kernel 6.12 desde fuente en el arbol
-# OpenWrt completo (v25.12.0, openwrt.lock), con la config real de RiverOs.
+# RiverOs completo (v25.12.0, openwrt.lock), con la config real de RiverOs.
 #
 # Flujo segun Duck.ai (fase 2b/3): feeds -> defconfig -> prepare ->
 # kernel config-6.12 -> compile. Genera vmlinux/vmlinuz/DTB y luego
@@ -13,12 +13,12 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OPENWRT="${1:-$REPO/../openwrt}"
 LOCK="$REPO/openwrt.lock"
 
-[ -d "$OPENWRT/.git" ] || { echo "ERROR: $OPENWRT no es un arbol OpenWrt (usa scripts/checkout-openwrt.sh)" >&2; exit 1; }
+[ -d "$OPENWRT/.git" ] || { echo "ERROR: $OPENWRT no es un arbol RiverOs (usa scripts/checkout-openwrt.sh)" >&2; exit 1; }
 
 COMMIT="$(grep -E '^OPENWRT_COMMIT=' "$LOCK" | cut -d= -f2)"
 cd "$OPENWRT"
 
-# OpenWrt rechaza configure como root sin esto (tools/tar, etc.)
+# RiverOs rechaza configure como root sin esto (tools/tar, etc.)
 export FORCE_UNSAFE_CONFIGURE=1
 
 echo "== 1. feeds =="

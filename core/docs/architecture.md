@@ -31,8 +31,8 @@
 
 1. [x] ImageBuilder → bins NETEST / RISP-BASE / RISP-RADIUS / EMBEBIDO
 2. [~] Repo estructurado (configs/profiles, package/riveros, build.sh)
-3. [ ] openwrt.lock fijado (commit OpenWrt 25.12.5)
-4. [ ] Imagen equivalente desde checkout completo de OpenWrt
+3. [ ] openwrt.lock fijado (commit RiverOs 25.12.5)
+4. [ ] Imagen equivalente desde checkout completo de RiverOs
 5. [ ] Kernel config 6.12.94 extraida a configs/kernel/
 6. [ ] Parches versionados (DTS → MT7530 → NAND → nft → wg)
 7. [ ] Initramfs RiverOs por netboot probado + rollback documentado

@@ -15,13 +15,13 @@
 - `imagebuilder/build.sh` genera: bin + `SHA256SUMS` (sha256+md5) +
   `openwrt-commit.txt` (version, kernel, profile, fecha, paquetes).
 - `imagebuilder/verify.sh`: checksum, secretos, consistencia, formato.
-- `openwrt.lock`: fija commit de OpenWrt + feeds (PENDIENTE de fijar).
+- `openwrt.lock`: fija commit de RiverOs + feeds (PENDIENTE de fijar).
 
 ## Pasos hacia el kernel propio (resumen)
 
 1. Tag baseline reproducible (`riveros-imagebuilder-baseline`)
 2. Doble build y comparar (sha256sum + diff manifest)
-3. Checkout completo de OpenWrt (`scripts/checkout-openwrt.sh`)
+3. Checkout completo de RiverOs (`scripts/checkout-openwrt.sh`)
 4. Importar producto (perfiles, package/riveros, overlay) sin tocar kernel
 5. Imagen equivalente al ImageBuilder (comparar manifest, DTS, tamano)
 6. Extraer kernel config 6.12.94 → `configs/kernel/mt7621-rb750gr3.config`

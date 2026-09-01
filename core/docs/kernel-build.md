@@ -1,7 +1,7 @@
 # RiverOs — Compilacion del kernel propio (desde fuente)
 
 Objetivo: compilar el kernel 6.12.94 desde el codigo fuente en el arbol
-OpenWrt completo (commit 6bad5f2050, snapshot master con kernel 6.12.94),
+RiverOs completo (commit 6bad5f2050, snapshot master con kernel 6.12.94),
 con la config real de RiverOs. Orientacion: Duck.ai (2026-08-30, chats
 kernel-cero, fase2, fase3, ronda-compile).
 
@@ -25,7 +25,7 @@ kernel-cero, fase2, fase3, ronda-compile).
 
 ## Decision
 
-Camino B (arbol OpenWrt completo) — legitimo "kernel propio desde fuente":
+Camino B (arbol RiverOs completo) — legitimo "kernel propio desde fuente":
 compilas el codigo, versionas config, anades parches, produces vmlinux/
 modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
 
@@ -39,14 +39,14 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
     bloque del device es Device/mikrotik_routerboard-750gr3 en v25.12.0)
 4. make target/linux/prepare V=s
 5. cp configs/kernel/mt7621-rb750gr3.config -> target/linux/ramips/mt7621/config-6.12
-   (mecanismo canonico de OpenWrt; NO savedefconfig para reproduccion exacta)
+   (mecanismo canonico de RiverOs; NO savedefconfig para reproduccion exacta)
 6. make target/linux/compile V=s -j
 7. make image PROFILE=mikrotik_routerboard-750gr3 CONFIG_TARGET_ROOTFS_INITRAMFS=y V=s
    -> bin/targets/ramips/mt7621/*mikrotik_routerboard-750gr3-initramfs-kernel.bin
 
 ## Initramfs netboot
 
-- CONFIG_TARGET_ROOTFS_INITRAMFS=y (OpenWrt genera el cpio; NO tocar
+- CONFIG_TARGET_ROOTFS_INITRAMFS=y (RiverOs genera el cpio; NO tocar
   CONFIG_INITRAMFS_SOURCE)
 - Kernel: CONFIG_BLK_DEV_INITRD=y, CONFIG_DEVTMPFS=y, CONFIG_DEVTMPFS_MOUNT=y
 - RouterBOOT recibe el nombre por DHCP filename (dhcp-boot), no requiere

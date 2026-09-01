@@ -15,7 +15,7 @@
 - [ ] Password por defecto eliminada / provisioning activo
 - [ ] Ruleset nftables base (gestion-only) presente
 - [ ] SHA256SUMS publicado (no solo MD5)
-- [ ] openwrt-commit.txt con version exacta de OpenWrt + kernel
+- [ ] openwrt-commit.txt con version exacta de RiverOs + kernel
 - [ ] Manifest de paquetes guardado
 - [ ] Rollback probado de punta a punta
 
