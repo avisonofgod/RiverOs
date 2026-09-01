@@ -8,7 +8,7 @@
 # Uso: ./build-kernel.sh [arbol_dir]   (default: ../openwrt)
 set -Eeuo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # raiz del repo
 OPENWRT="${1:-$REPO/../openwrt}"
 
 [ -d "$OPENWRT/.git" ] || { echo "ERROR: $OPENWRT no es un arbol RiverOs (usa scripts/checkout-riveros.sh)" >&2; exit 1; }
@@ -18,13 +18,13 @@ export FORCE_UNSAFE_CONFIGURE=1
 
 echo "== 1. archivos del repo -> arbol =="
 # 1a. .config del target (paquetes del initramfs)
-cp "$REPO/configs/target-rb750gr3.config" .config
+cp "$REPO/core/configs/target-rb750gr3.config" .config
 # 1b. kernel config (fuente primaria)
-cp "$REPO/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
+cp "$REPO/core/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
 # 1c. parches del kernel
 mkdir -p target/linux/ramips/patches-6.12
 cp "$REPO"/patches/kernel/*.patch target/linux/ramips/patches-6.12/
-# 1d. files del device (preinit, network, init.d, shadow se genera en build)
+# 1d. files del device (preinit, network, init.d; shadow se genera en build)
 mkdir -p target/linux/ramips/mt7621/base-files
 cp -r "$REPO"/targets/mips/devices/mikrotik-rb750gr3/files/* target/linux/ramips/mt7621/base-files/
 chmod 0755 target/linux/ramips/mt7621/base-files/lib/preinit/99_red_manual.sh 2>/dev/null || true
