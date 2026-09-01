@@ -125,3 +125,13 @@ EXPERIMENTAL (kernel minimo, SIN RED — pendiente):
 
 PARA REPRODUCIR v14: config-6.12 = core/configs/kernel/mt7621-rb750gr3.config
 (FULL) + .config del arbol con los cortes de paquetes (43) + preinit + shadow.
+
+## v19 — IDENTIDAD RiverOs (2026-08-31)
+
+CONFIG_VERSION_DIST="RiverOs" + CONFIG_VERSION_NUMBER="25.12-NETEST" en el
+.config del arbol. El binario generado: riveros-ramips-...-750gr3-initramfs-
+kernel.bin (prefijo riveros-, sha 5634e590, 4.90MB). Verificado sin netboot:
+- readelf: entry 0x80b71000, .appended_dtb PROGBITS (0x3203), < 6.66MiB
+- rootfs/initramfs: DISTRIB_ID='RiverOs', preinit 99_red_manual, shadow,
+  dropbear — los archivos validados en hardware (v14 arranco con SSH)
+- Reproducible: mismo arbol + .config -> mismo binario (pipeline deterministico)
