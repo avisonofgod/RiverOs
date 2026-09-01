@@ -9,7 +9,6 @@ RiverOS Core                  <- fuente del sistema (no instalable)
 │   ├── configs/              <- configs base y perfiles (debug/netboot/release)
 │   ├── docs/                 <- documentación técnica
 │   ├── scripts/              <- scripts de compilación e init.d
-│   └── imagebuilder/         <- builds ImageBuilder
 └── targets/
     └── mips/
         ├── common/           <- común a MIPS
