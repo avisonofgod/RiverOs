@@ -92,3 +92,16 @@ libmbedtls (dropbear), libnl-tiny (netifd), kernel.
 NOTA build: el initramfs del bin se congela (touch @1782344232 + cmp -s);
 para cambiar paquetes: package/install + borrar vmlinux-initramfs* y
 usr/initramfs_data.cpio* + target/linux/install (o clean+world completo).
+
+## ✅ v14 VALIDADO (2026-08-31 19:05)
+
+Corte real del 6.12 (52→43 paq, 4.68MB, sha 4863052b):
+quitados: kmod-usb*, gpio-button, leds, apk-mbedtls, uclient, uclient-fetch,
+getrandom, urandom-seed, procd-seccomp, mtd, logd, libuclient.
+SSH OK .131 (dropbear rbadmin2026).
+
+PISO 6.12 (irreducible, deps duras): base-files, busybox, dropbear, procd,
+ubus/ubusd, uci, netifd, fstools, fwtool, openwrt-keyring, usign, ubi-utils,
+jsonfilter, jshn, ucode + ucode-mod-{ubus,uci,uloop}, libubus, libubox,
+libuci, libjson-c, libjson-script, libblobmsg, libmbedtls, libnl-tiny,
+libudebug, libc, libgcc1, zlib, kernel, kmod-nls-base, ubox, urngd, ubus.
