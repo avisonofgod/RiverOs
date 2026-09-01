@@ -41,12 +41,36 @@ echo "== 4. imagen initramfs (netboot) =="
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
 
 IMG="$(ls -t bin/targets/ramips/mt7621/riveros-*initramfs-kernel.bin 2>/dev/null | head -n1)"
-if [ -n "$IMG" ]; then
-  echo "== 5. artefacto =="
-  ls -lh "$IMG"
-  readelf -h "$IMG" | grep Entry || true
-else
-  echo "WARN: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)"
+if [ -z "$IMG" ]; then
+  echo "ERROR: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)" >&2
+  exit 1
 fi
+
+echo "== 5. artefacto =="
+ls -lh "$IMG"
+
+echo "== 6. revision estatica (PASS gate) =="
+SIZE="$(stat -c %s "$IMG")"
+ENTRY="$(readelf -h "$IMG" | awk '/Entry point/{print $4}')"
+HAS_DTB="$(readelf -S "$IMG" | grep -c appended_dtb || true)"
+SHA="$(sha256sum "$IMG" | cut -d' ' -f1)"
+MAX=$((0x6aa000))
+FAIL=0
+[ "$ENTRY" = "0x80b71000" ] || { echo "FAIL: entry $ENTRY (esperado 0x80b71000)"; FAIL=1; }
+[ "$HAS_DTB" -ge 1 ] || { echo "FAIL: sin seccion .appended_dtb"; FAIL=1; }
+[ "$SIZE" -lt "$MAX" ] || { echo "FAIL: tamano $SIZE >= $MAX (6.66MiB)"; FAIL=1; }
+grep -q "^CONFIG_MT7621_WDT=y" target/linux/ramips/mt7621/config-6.12 || { echo "FAIL: MT7621_WDT no esta en y"; FAIL=1; }
+[ "$FAIL" -eq 0 ] || { echo "build-kernel.sh: REVISION FALLIDA, no se sirve a pkg"; exit 1; }
+echo "PASS: entry=$ENTRY dtb=$HAS_DTB size=$SIZE max=$MAX sha=$SHA"
+
+echo "== 7. servir a pkg (netboot listo) =="
+PKG_DIR="${PKG_DIR:-/root/netinstall-openwrt/pkg}"
+[ -d "$PKG_DIR" ] || { echo "ERROR: $PKG_DIR no existe"; exit 1; }
+rm -f "$PKG_DIR"/*.bin "$PKG_DIR"/*.sha256 2>/dev/null || true
+cp "$IMG" "$PKG_DIR/riveros-6.12.94-initramfs-kernel.bin"
+sha256sum "$PKG_DIR/riveros-6.12.94-initramfs-kernel.bin" > "$PKG_DIR/riveros-6.12.94-initramfs-kernel.bin.sha256"
+ls -lh "$PKG_DIR/"
+echo "NETBOOT LISTO: pkg/riveros-6.12.94-initramfs-kernel.bin sha=$SHA"
+echo "-> reiniciar loader (loader-riveros.sh) para servir el bin fresco"
 
 echo "build-kernel.sh: OK"
