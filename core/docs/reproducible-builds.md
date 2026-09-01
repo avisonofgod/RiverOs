@@ -1,36 +1,13 @@
-# RiverOs — Builds reproducibles
+# RiverOS — reproducibilidad
 
-## Problema actual
+El build del kernel es deterministico: mismo arbol + mismo .config ->
+mismo binario (verificado: v3/v4 sha identico 80faf834).
 
-- El build via ImageBuilder depende de un arbol descargado y de FILES
-  externos; hasta ahora los ficheros de overlay estaban sueltos en
-  imagebuilder/ (inconsistentes con el README).
-- Checksums solo MD5; sin manifest ni metadatos de build.
+Flujo reproducible:
+1. checkout-riveros.sh (obtiene el arbol base, tag v25.12.5)
+2. build-kernel.sh (config-6.12 del repo -> prepare -> compile -> install)
+3. check-config.sh (valida el .config: red + contrato RouterBOOT)
 
-## Solucion en curso (repo)
-
-- Overlay canonico: `configs/files/` (estructura etc/...) — el build falla
-  si no existe.
-- Perfiles: `configs/profiles/*.config` (PROFILE + PACKAGES + OUTPUT).
-- `imagebuilder/build.sh` genera: bin + `SHA256SUMS` (sha256+md5) +
-  `openwrt-commit.txt` (version, kernel, profile, fecha, paquetes).
-- `imagebuilder/verify.sh`: checksum, secretos, consistencia, formato.
-- `openwrt.lock`: fija commit de RiverOs + feeds (PENDIENTE de fijar).
-
-## Pasos hacia el kernel propio (resumen)
-
-1. Tag baseline reproducible (`riveros-imagebuilder-baseline`)
-2. Doble build y comparar (sha256sum + diff manifest)
-3. Checkout completo de RiverOs (`scripts/checkout-openwrt.sh`)
-4. Importar producto (perfiles, package/riveros, overlay) sin tocar kernel
-5. Imagen equivalente al ImageBuilder (comparar manifest, DTS, tamano)
-6. Extraer kernel config 6.12.94 → `configs/kernel/mt7621-rb750gr3.config`
-7. Primer cambio inocuo (banner) y verificar en el artefacto
-8. Parches por capas: DTS → MT7530/DSA → NAND/UBI → netfilter → wireguard
-9. Siempre 2 imagenes: initramfs-kernel.bin (netboot) + squashfs-sysupgrade
-10. Probar por netboot antes de escribir NAND (ver recovery-netboot.md)
-
-## Regla
-
-Cada commit de kernel: `make target/linux/refresh && git diff -- target/linux/`
-y probar en bin antes de tocar el router. Sysupgrade PLAIN v6, nunca -v7.
+Snapshots de configs validados: docs/archive/configs/
+Verificacion sin netboot: readelf (entry 0x80b71000, .appended_dtb) +
+initramfs (rootfs: preinit, dropbear, release RiverOs).

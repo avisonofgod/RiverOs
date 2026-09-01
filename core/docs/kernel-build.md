@@ -31,7 +31,7 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
 
 ## Flujo (scripts/build-kernel.sh)
 
-1. git clone openwrt + checkout 4da53ef (scripts/checkout-openwrt.sh)
+1. git clone del arbol base + checkout v25.12.5 (scripts/checkout-riveros.sh)
 2. ./scripts/feeds update -a && install -a
 3. cp configs/profiles/rb750gr3.openwrt.config .config && make defconfig
    (simbolos: CONFIG_TARGET_ramips=y, CONFIG_TARGET_ramips_mt7621=y,
