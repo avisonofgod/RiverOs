@@ -46,11 +46,18 @@ patches/                       <- parches locales documentados
 - [ ] Validar v18 (MT7530 MMIO + REGMAP)
 - [ ] Kernel release (sin debug) + perfiles
 
-## Perfiles de configuracion (targets/mips/devices/mikrotik-rb750gr3/configs/)
+## Perfiles de configuracion (targets/mips/devices/mikrotik-rb750gr3/config/)
 
-- mt7621-debug.config   — kernel completo + tracing/symbols (diagnostico)
-- rb750gr3-netboot.config — kernel completo funcional (initramfs + red + dropbear)
-- rb750gr3-release.config  — kernel minimo (sin WLAN/USB/SOUND/fs/debug)
+Fragmentos (fuente primaria — combinados generan el .config):
+- hardware.config — red DSA/MT7530 + UART + WDT del RB750Gr3
+- netboot.config  — initramfs + entry 0x80b71000 + RAW_DTB
+- release.config  — minimo de produccion
+- debug.config    — tracing + symbols
 
-Base compartida: targets/mips/common/mips-base.config (MIPS32R2/SMP/OF/INITRD)
-y targets/mips/mt7621/mt7621-base.config (SoC/ETH/DSA/UART/WDT).
+Base compartida: targets/mips/common/mips-base.config y
+targets/mips/mt7621/mt7621-base.config.
+
+Comprobacion automatica del config: core/scripts/check-config.sh
+(verifica red + contrato RouterBOOT + consola).
+
+Snapshots completos generados: docs/archive/configs/
