@@ -45,3 +45,12 @@ patches/                       <- parches locales documentados
 - [x] Kernel mínimo (config reducido ~465 =y desde ~1100)
 - [ ] Validar v18 (MT7530 MMIO + REGMAP)
 - [ ] Kernel release (sin debug) + perfiles
+
+## Perfiles de configuracion (targets/mips/devices/mikrotik-rb750gr3/configs/)
+
+- mt7621-debug.config   — kernel completo + tracing/symbols (diagnostico)
+- rb750gr3-netboot.config — kernel completo funcional (initramfs + red + dropbear)
+- rb750gr3-release.config  — kernel minimo (sin WLAN/USB/SOUND/fs/debug)
+
+Base compartida: targets/mips/common/mips-base.config (MIPS32R2/SMP/OF/INITRD)
+y targets/mips/mt7621/mt7621-base.config (SoC/ETH/DSA/UART/WDT).
