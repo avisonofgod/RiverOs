@@ -105,3 +105,23 @@ ubus/ubusd, uci, netifd, fstools, fwtool, openwrt-keyring, usign, ubi-utils,
 jsonfilter, jshn, ucode + ucode-mod-{ubus,uci,uloop}, libubus, libubox,
 libuci, libjson-c, libjson-script, libblobmsg, libmbedtls, libnl-tiny,
 libudebug, libc, libgcc1, zlib, kernel, kmod-nls-base, ubox, urngd, ubus.
+
+## ESTADO FINAL CONSOLIDADO (2026-08-31 23:00)
+
+FUNCIONAL (validado con SSH en hEX):
+- v14 = riveros-6.12.94-MINIMAL-FUNCIONAL (sha 4863052b, 4.68MB)
+  kernel 6.12.94 CONFIG GENERICO (2286 simbolos) + initramfs 43 paq
+  (usb/gpio/leds/apk/uclient/getrandom/urandom/mtd/logd/seccomp quitados)
+  red DHCP + SSH dropbear OK.
+
+EXPERIMENTAL (kernel minimo, SIN RED — pendiente):
+- kernel-min-6.12.config (465 =y desde ~1100): vmlinux 58.6MB -> 40.2MB
+  pero el DSA/eth no levanta: faltan deps del MT7530 MMIO.
+  Fixes aplicados: MEDIATEK_GE_PHY=y (phy gmac), NET_DSA_MT7530_MMIO=y +
+  select REGMAP_MMIO (parche 0001, bug del backport OpenWrt).
+  v16 (4.39MB) y v17/v18 sin DHCP — el eth no trae enlace.
+  PENDIENTE: verificar dmesg del DSA (consola serie no disponible);
+  probar mas deps: NET_DSA_TAG_MTK, MTD_SPI_NOR, GPIO_MT7621, RESET_MT7621.
+
+PARA REPRODUCIR v14: config-6.12 = core/configs/kernel/mt7621-rb750gr3.config
+(FULL) + .config del arbol con los cortes de paquetes (43) + preinit + shadow.
