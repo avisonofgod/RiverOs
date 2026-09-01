@@ -14,4 +14,4 @@ check:
 	core/scripts/check-config.sh
 
 build:
-	core/scripts/build-kernel.sh
+	core/scripts/build-kernel.sh /home/proyectos/openwrt
