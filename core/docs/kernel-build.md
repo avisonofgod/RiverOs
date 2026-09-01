@@ -33,7 +33,7 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
 
 1. git clone del arbol base + checkout v25.12.5 (scripts/checkout-riveros.sh)
 2. ./scripts/feeds update -a && install -a
-3. cp configs/profiles/rb750gr3.openwrt.config .config && make defconfig
+3. cp configs/kernel/mt7621-rb750gr3.config target/linux/ramips/mt7621/config-6.12
    (simbolos: CONFIG_TARGET_ramips=y, CONFIG_TARGET_ramips_mt7621=y,
     CONFIG_TARGET_ramips_mt7621_DEVICE_mikrotik_routerboard-750gr3=y — el
     bloque del device es Device/mikrotik_routerboard-750gr3 en v25.12.0)
@@ -61,11 +61,11 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
   de openwrt con 6.12.94:
     git fetch origin master
     git log --all --oneline -S 'LINUX_VERSION-6.12 = .94' -- target/linux/generic/kernel-6.12
-  y fijar openwrt.lock a ESE commit (reproducir lo que ya arranca)
+  y fijar el tag del arbol base a ESE commit (reproducir lo que ya arranca)
 
 ## Checklist
 
-- [ ] openwrt.lock commit 4da53ef
+- [x] tag v25.12.5 fijado en checkout-riveros.sh
 - [ ] feeds instalados
 - [ ] make defconfig sin errores de simbolos
 - [ ] KERNEL_PATCHVER coincide con IB
