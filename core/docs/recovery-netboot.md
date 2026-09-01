@@ -8,7 +8,7 @@ Ethernet y se restaura desde ahi.
 
 ## Componentes
 
-- Binario estable: `/root/netinstall-openwrt/backups/riveros-GOOD-25.12.5.bin`
+- Binario estable (netboot kernel): `/root/netinstall-openwrt/pkg/riveros-6.12.94-v20-min.config.bin` (4506f637, kernel 6.12.94 minimo)
 - `restore.sh`: netboot initramfs 22.03.3 → sube GOOD → `sysupgrade -n`
 - Loader dnsmasq: `/root/netinstall-openwrt` (`dhcp-boot=openwrt-22.03.3-initramfs-kernel.bin`)
 
@@ -48,8 +48,8 @@ No considerar el proyecto terminado hasta ejecutar este rollback con exito.
 
 ## Prueba del KERNEL PROPIO por netboot (reversible, sin tocar NAND)
 
-Artefacto: `/root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin`
-(sha256 e6c3876a..., generado del arbol RiverOs completo, commit 6bad5f2050).
+Artefacto: `/root/netinstall-openwrt/pkg/riveros-6.12.94-v20-min.config.bin`
+(4506f637, kernel 6.12.94 minimo 957 =y — generado con core/scripts/build-kernel.sh).
 
 1. Backup del dnsmasq: `cp /etc/dnsmasq.conf /root/netinstall-openwrt/backups/`
 2. Config temporal `/root/netinstall-openwrt/dnsmasq-riveros.conf`:
