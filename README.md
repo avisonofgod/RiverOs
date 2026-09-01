@@ -1,100 +1,47 @@
-# RiverOs — OpenWrt minimizado para MikroTik hEX RB750Gr3
+# RiverOS
 
-Capa base del sistema (SO): **NETEST / OpenWrt → RiverOs** (kernel básico mejorado).
-Contiene SOLO el sistema: imagen ImageBuilder, scripts de red/arranque, configs.
-El gestor ISP (binario + código) vive en el repo separado **Risp**.
-
-```
-┌─────────────────────────────────────────────┐
-│ Risp (gestor ISP)        repo: avisonofgod/Risp │
-│   risp :80 portal, :8081 admin               │
-│   instala en /etc/risp + /etc/init.d/risp    │
-├─────────────────────────────────────────────┤
-│ RiverOs (ESTE REPO — capa SO)               │
-│   kernel 6.12.94 mejorado (initramfs XZ,    │
-│   DSA MT7530, netfilter, wireguard)         │
-│   ImageBuilder 25.12.5 → riveros-*.bin      │
-│   scripts: riveros-red, dropbear, rename    │
-├─────────────────────────────────────────────┤
-│ Bootloader RouterBOOT v6 (sysupgrade PLAIN) │
-└─────────────────────────────────────────────┘
-```
-
-## Hardware
-
-- hEX RB750Gr3, MT7621 (mipsel_24kc), 256MB RAM, 16MB flash NAND
-- RouterBOOT 6.47.10 (v6 — sysupgrade PLAIN, NO -v7)
-- Switch MT7530 (DSA): 5 puertos Gigabit + puerto CPU interno
-- Detalle y verificación: `docs/hardware-rb750gr3.md`
-
-## Identidad RiverOs
-
-- hostname: riveros · console: **ether1 = eth0**, IP 192.168.5.1/24
-- pass root: SOLO desarrollo (rbadmin2026) — **CAMBIAR en producción**
-  (build con `PROD=1` falla si detecta la credencial por defecto)
-- sin LuCI/uhttpd/rpcd · red manual sin netifd (S98riveros-red)
-
-## Nombres de puertos (ethX neutro, nivel kernel)
-
-| Nombre kernel | Puerto físico | Uso |
-|---|---|---|
-| eth0 | ether1 | Consola / acceso físico (192.168.5.1) |
-| eth1..eth4 | ether2..ether5 | Libres (configurables por Risp) |
-| sw0 | — | Puerto CPU del switch (interno, oculto) |
-
-Rename en boot: `rename-ports` (START=08, antes de network START=20).
-PITFALL: renombrar en vivo con netifd corriendo tira la IP — usar UCI+init,
-y tener IP de respaldo (192.168.10.1/24) en otro puerto antes de tocar.
-
-## Red manual (sin UCI/netifd)
-
-- libuci/netifd/ucode = deps DURAS de base-files: NO purgables via apk; purgable: uci (CLI)
-- Deshabilitados: network, firewall, odhcpd, uhttpd, rpcd, ucitrack, sysntpd, cron
-  (whiteouts en overlay /etc/rc.d)
-- Red gestionada por S98riveros-red (script manual ip, SIN netifd):
-  renombra cpu port -> sw0, ether1 -> eth0, ip addr 192.168.5.1/24 dev eth0
-- dropbear: script manual S95dropbear (sin UCI, key ed25519 en /etc/dropbear)
-
-## Build del bin (ImageBuilder)
-
-```sh
-cd imagebuilder-25.12.5          # arbol ImageBuilder 25.12.5 (mt7621)
-/path/RiverOs/imagebuilder/build.sh -p netest              # 52 paq
-/path/RiverOs/imagebuilder/build.sh -p risp-radius         # 90 paq (+ppp pppoe radius)
-FILES=<arbol backend risp> /path/RiverOs/imagebuilder/build.sh -p risp-radius-embebido
-```
-
-Salida: `imagebuilder/out/<perfil>.bin` + `SHA256SUMS` + `openwrt-commit.txt`.
-Compat wrappers: `build-netest.sh`, `build-risp-radius.sh`, `build-risp-radius-embebido.sh`.
-Bins históricos: `/root/netinstall-openwrt/backups/` (GOOD = riveros-GOOD-25.12.5.bin).
-
-## Recuperación / rollback
-
-- Binario funcional: /root/netinstall-openwrt/backups/riveros-GOOD-25.12.5.bin
-- restore.sh: netboot initramfs 22.03.3 -> sube GOOD -> sysupgrade -n -> espera 192.168.5.1
-- Loader dnsmasq: /root/netinstall-openwrt (dhcp-boot=openwrt-22.03.3-initramfs-kernel.bin)
-- Procedimiento completo: `docs/recovery-netboot.md`
-
-## Estructura repo
+Sistema operativo embebido mínimo para hardware MikroTik (y futuras variantes),
+construido sobre el árbol OpenWrt. Jerarquía:
 
 ```
-configs/          perfiles de build + overlay canonico + kernel config
-  profiles/       netest.config, risp-radius.config, risp-radius-embedded.config
-  files/          overlay: etc/{hostname,config/{network,system,dropbear},shadow}
-  kernel/         mt7621-rb750gr3.config (PENDIENTE extraer .config real)
-  uci/            configs UCI de referencia
-package/riveros/  paquetes OpenWrt propios: riveros-red, riveros-dropbear, riveros-portnames
-scripts/          init.d de RiverOs + checkout-openwrt.sh
-imagebuilder/     build.sh (unificado) + verify.sh + compat wrappers
-docs/             architecture, hardware, security, recovery, builds, release
-overlay-backup/   snapshots del overlay
-openwrt.lock      commit OpenWrt fijado (PENDIENTE de fijar)
-VERSION LICENSE Makefile
+RiverOS Core                  <- fuente del sistema (no instalable)
+├── core/
+│   ├── configs/              <- configs base y perfiles (debug/netboot/release)
+│   ├── docs/                 <- documentación técnica
+│   ├── scripts/              <- scripts de compilación e init.d
+│   └── imagebuilder/         <- builds ImageBuilder
+└── targets/
+    └── mips/
+        ├── common/           <- común a MIPS
+        ├── mt7621/           <- kernel/config del SoC MT7621
+        └── devices/
+            └── mikrotik-rb750gr3/   <- imagen específica RB750Gr3
+                ├── files/           <- preinit (red manual), shadow
+                ├── kernel-min-6.12.config
+                ├── kernel-full-6.12.config.bak
+                └── docs/
+
+patches/                       <- parches locales documentados
+    ├── 0001-dsa-mt7530-select-regmap-mmio.patch   (bug backport OpenWrt)
+    └── 935-load-y-mt7621-82000000.patch           (contrato RouterBOOT)
 ```
 
-## Relación con Risp
+## RiverOS-MIPS (firmware mínimo arrancable)
+- Kernel Linux 6.12.94 (OpenWrt 25.12-NETEST) para MT7621
+- Device Tree RB750Gr3 (wan=ether1, lan2-5=ether2-5)
+- Initramfs con preinit (red manual + dropbear)
+- Contrato RouterBOOT v6: entry 0x80b71000 + MIPS_RAW_APPENDED_DTB=y
+  + load-y 0xffffffff82000000 (anti-solape de descompresión)
 
-- Risp instala encima de esta base: risp (binario mipsel) en /etc/risp,
-  /etc/init.d/risp (procd START=99), symlinks /home/rispm, static/ y templates/.
-- El frontend Risp configura ethX (ip-addresses, mwan, vlans, bridges...) usando
-  los nombres reales del kernel (eth0..eth4) — ver repo Risp.
+## RiverOS-MIPS-RB750Gr3 (imagen)
+- Bin: riveros-6.12.94-v18 (4.39MB) — netboot BOOTP/TFTP
+- 42 paquetes (userspace mínimo: base-files, busybox, dropbear, procd...)
+- Red: wan 192.168.88.3 (preinit) o DHCP; br-lan 192.168.88.1 (lan2-5)
+- SSH: dropbear, root/rbadmin2026 (CAMBIAR en producción)
+
+## Estado
+- [x] 22.03.3 minimal (33 paq) validado por netboot (base de referencia)
+- [x] Kernel 6.12.94 propio arranca por netboot (red + SSH)
+- [x] Kernel mínimo (config reducido ~465 =y desde ~1100)
+- [ ] Validar v18 (MT7530 MMIO + REGMAP)
+- [ ] Kernel release (sin debug) + perfiles

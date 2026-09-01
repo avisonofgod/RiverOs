@@ -1,0 +1,8 @@
+--- a/arch/mips/ralink/Platform
++++ b/arch/mips/ralink/Platform
+@@ -30,5 +30,5 @@
+ # Ralink MT7621
+ #
+-load-$(CONFIG_SOC_MT7621)	+= 0xffffffff80001000
++load-$(CONFIG_SOC_MT7621)	+= 0xffffffff82000000
+ cflags-$(CONFIG_SOC_MT7621)	+= -I$(srctree)/arch/mips/include/asm/mach-ralink/mt7621
