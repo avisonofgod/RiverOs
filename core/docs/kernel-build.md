@@ -17,11 +17,10 @@ kernel-cero, fase2, fase3, ronda-compile).
 - World (paquetes+imagenes): make -j8 → 2 intentos (1er fallo = carrera
   -j8 en ustream-ssl, transitorio; 2do OK 3m39s)
 - Artefactos (bin/targets/ramips/mt7621/):
-  - openwrt-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin
-    (5.16MB, ELF MIPS32 + DTB rb750gr3, sha256 e6c3876a...)
-  - ...-squashfs-sysupgrade.bin (5.37MB, plain — NUNCA -v7)
-- Copias: /root/netinstall-openwrt/riveros-6.12.94-initramfs-kernel.bin
-  (netboot) + backups/riveros-PROPIO-6.12.94-sysupgrade.bin (candidato)
+  - riveros-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin
+    (kernel 6.12.94 + initramfs, ELF MIPS32 + DTB rb750gr3, entry 0x80b71000)
+- Copia netboot: /root/netinstall-openwrt/pkg/riveros-6.12.94-v20-min.config.bin
+  (4506f637, 4.66MB — kernel minimo 957 =y validado con SSH)
 
 ## Decision
 
