@@ -73,3 +73,13 @@ modulos/DTB. NO es vanilla kernel.org (proyecto posterior), NO es Buildroot.
 - [ ] target/linux/compile OK -> vmlinux/vmlinuz/DTB
 - [ ] initramfs-kernel.bin generado (plain, NUNCA -v7)
 - [ ] netboot probado en RAM antes de sysupgrade
+
+## v20 VALIDADO (2026-09-01) — kernel minimo con red
+
+Kernel 6.12.94 reducido a 957 =y (sin WLAN/USB/SOUND/fs/debug) por netboot:
+- DHCPACK .133, SSH OK, DISTRIB_ID='RiverOs'
+- Red completa conservada: NET_DSA_MT7530 + REGMAP_MMIO + MEDIATEK_GE_PHY
+- vmlinux 55.5MB (vs 58.6 FULL), bin 4.66MB (vs 4.90 v19)
+- sha 4506f637 — riveros-6.12.94-v20-min.config.bin
+- Config actual = rb750gr3-release.config (fragmentos hardware+netboot)
+- check-config.sh valida los 16 simbolos clave
