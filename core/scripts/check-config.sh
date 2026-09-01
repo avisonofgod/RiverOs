@@ -25,6 +25,6 @@ grep -q '^CONFIG_ZBOOT_LOAD_ADDRESS=0x80b71000' "$C" && echo "OK  CONFIG_ZBOOT_L
 # consola/hw
 check CONFIG_SERIAL_8250
 check CONFIG_SERIAL_8250_CONSOLE
-check CONFIG_MEDIATEK_WATCHDOG
+check CONFIG_MT7621_WDT
 echo "=== $([ $FAIL -eq 0 ] && echo 'CONFIG OK' || echo 'FALTAN SIMBOLOS') ==="
 exit $FAIL
