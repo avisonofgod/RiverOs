@@ -1,9 +1,10 @@
 --- a/drivers/net/dsa/Kconfig
 +++ b/drivers/net/dsa/Kconfig
-@@ -59,7 +59,7 @@ config NET_DSA_MT7530_MMIO
- '	tristate "MediaTek MT7530 MMIO interface driver"
- '	depends on NET_DSA_MT7530
- '	depends on HAS_IOMEM
- '	imply MEDIATEK_GE_SOC_PHY
+@@ -61,6 +61,7 @@
+ 	depends on NET_DSA_MT7530
+ 	depends on HAS_IOMEM
+ 	imply MEDIATEK_GE_SOC_PHY
 +	select REGMAP_MMIO
- '	help
+ 	help
+ 	  This enables support for the built-in Ethernet switch found
+ 	  in the MediaTek MT7988 SoC.
