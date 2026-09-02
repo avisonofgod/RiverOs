@@ -47,6 +47,7 @@ RROOT="$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips"
 [ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/banner" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/banner" "$RROOT/etc/banner"
 [ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/device_info" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/device_info" "$RROOT/etc/device_info"
 [ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/os-release" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/os-release" "$RROOT/usr/lib/os-release"
+[ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/config/system" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/config/system" "$RROOT/etc/config/system"
 rm -f "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.cpio" \
       "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.o"
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
