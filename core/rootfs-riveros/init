@@ -2,7 +2,7 @@
 # RiverOs /init — E2 rootfs PROPIO (sin procd/netifd/uci/apk)
 # kernel -> /init -> red manual fija -> dropbear -> loop
 # Puertos DTB RB750Gr3: wan=ether1, lan2-lan5=ether2-5
-# Usa iproute2 (ip) + bridge-utils (brctl) — busybox OpenWrt NO trae esos applets
+# Usa applets busybox EXISTENTES: ifconfig + brctl (NO ip: busybox OpenWrt no lo trae)
 export INITRAMFS=1
 export PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
@@ -11,19 +11,17 @@ mount -t proc proc /proc 2>/dev/null
 mount -t sysfs sysfs /sys 2>/dev/null
 mount -t devtmpfs devtmpfs /dev 2>/dev/null
 mkdir -p /tmp /var/run /var/log /etc/dropbear 2>/dev/null
-mount -t tmpfs tmpfs /tmp 2>/dev/null
 
-echo "RiverOs init: network manual (iproute2)"
-ip link set lo up 2>/dev/null
-ip link add name br-lan type bridge 2>/dev/null
+echo "RiverOs init: network manual"
+ifconfig lo up 2>/dev/null
+brctl addbr br-lan 2>/dev/null
 for p in lan2 lan3 lan4 lan5; do
-    ip link set dev $p up 2>/dev/null
-    ip link set dev $p master br-lan 2>/dev/null
+    ifconfig $p up 2>/dev/null
+    brctl addif br-lan $p 2>/dev/null
 done
-ip link set dev br-lan up 2>/dev/null
-ip addr add 192.168.88.1/24 dev br-lan 2>/dev/null
-ip link set dev wan up 2>/dev/null
-ip addr add 192.168.88.3/24 dev wan 2>/dev/null
+ifconfig br-lan 192.168.88.1 netmask 255.255.255.0 up 2>/dev/null
+ifconfig wan up 2>/dev/null
+ifconfig wan 192.168.88.3 netmask 255.255.255.0 up 2>/dev/null
 
 echo "RiverOs init: dropbear"
 /usr/sbin/dropbear -R -p 22 2>/dev/null
