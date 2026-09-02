@@ -91,7 +91,7 @@ CPIO="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.
 CPIO_FILES="$(cpio -it < "$CPIO" 2>/dev/null | wc -l)"
 CPIO_APPS="$(cpio -it < "$CPIO" 2>/dev/null | grep -cE '^sbin/|^usr/sbin/' || true)"
 PKG_LIST="$(grep -oE '^CONFIG_DEFAULT_[a-z0-9-]+=y' "$REPO/core/configs/target-rb750gr3.config" | sed 's/CONFIG_DEFAULT_//;s/=y//' | tr '\n' ' ')"
-TC_VER="$(ls "$OPENWRT/staging_dir/toolchain-mipsel_24kc"*/ 2>/dev/null | head -1)"
+TC_VER="$(basename "$(ls -d "$OPENWRT/staging_dir/toolchain-mipsel_24kc"* 2>/dev/null | head -1)")"
 OUT="$REPO/core/artifacts/BUILD-latest.json"
 mkdir -p "$REPO/core/artifacts"
 cat > "$OUT" <<EOF
