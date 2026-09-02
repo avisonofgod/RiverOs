@@ -22,8 +22,12 @@ DTB="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/image-mt7621
 OBJ="$CROSS"objcopy
 JOBS="$(nproc)"
 
-[ -f "$K/.config" ] || { echo "ERROR: no .config (correr build-kernel.sh primero)" >&2; exit 1; }
+[ -f "$K/.config.set" ] || { echo "ERROR: no .config.set (correr build-kernel.sh primero)" >&2; exit 1; }
 [ -f "$DTB" ] || { echo "ERROR: no DTB" >&2; exit 1; }
+
+# Usar .config.set (config PRE-compile con TODOS los kmod selects = reproduce 6c8492de)
+# NO el .config post-compile: make target/linux/compile lo DEGRADA (pierde 8021Q y ~221 simbolos)
+cp "$K/.config.set" "$K/.config"
 
 # spec exacta capturada de OpenWrt (include/kernel.mk + V=99 dry-run, 2026-09-02)
 KMAKE_FLAGS=(KCFLAGS="-fmacro-prefix-map=$OPENWRT/build_dir/target-mipsel_24kc_musl=target-mipsel_24kc_musl -fno-caller-saves"
