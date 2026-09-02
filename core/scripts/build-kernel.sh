@@ -41,6 +41,12 @@ echo "== 4. imagen initramfs (netboot) =="
 # re-empaquetar initramfs con files/ del subtarget (base-files): package/install
 # reinstala los archivos en el rootfs; limpiar vmlinux-initramfs fuerza rebuild del cpio
 make package/install V=s -j"$(nproc)" 2>&1 | tail -3
+# rebrand post-install: banner/os-release/device_info los genera el PAQUETE base-files
+# y pisan al subtarget; sobrescribir en root-ramips (os-release = symlink a usr/lib/os-release)
+RROOT="$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips"
+[ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/banner" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/banner" "$RROOT/etc/banner"
+[ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/device_info" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/device_info" "$RROOT/etc/device_info"
+[ -f "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/os-release" ] && cp "$REPO/targets/mips/devices/mikrotik-rb750gr3/files/etc/os-release" "$RROOT/usr/lib/os-release"
 rm -f "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.cpio" \
       "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.o"
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
