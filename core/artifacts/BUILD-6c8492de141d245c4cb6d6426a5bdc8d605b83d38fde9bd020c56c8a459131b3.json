@@ -1,6 +1,6 @@
 {
   "version": "6c8492de",
-  "fecha": "2026-09-02T02:56:11-04:00",
+  "fecha": "2026-09-02T03:25:16-04:00",
   "kernel": "6.12.94",
   "bin": "bin/targets/ramips/mt7621/riveros-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin",
   "bin_sha256": "6c8492de141d245c4cb6d6426a5bdc8d605b83d38fde9bd020c56c8a459131b3",
