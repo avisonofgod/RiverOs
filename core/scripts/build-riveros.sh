@@ -51,6 +51,9 @@ echo "# CONFIG_INITRAMFS_COMPRESSION_LZ4 is not set" >> "$K/.config"
 echo "# CONFIG_INITRAMFS_COMPRESSION_ZSTD is not set" >> "$K/.config"
 echo 'CONFIG_RD_LZMA=y' >> "$K/.config"
 rm -f "$K/.config.old" "$K/usr/initramfs_data.cpio" "$K/usr/initramfs_data.cpio"*
+# reproducibilidad: OpenWrt normaliza mtimes del rootfs con SOURCE_DATE_EPOCH
+# (find -execdir touch -hcd) antes de generar el cpio — replica exacta
+find "$RROOT" -mindepth 1 -execdir touch -hcd "@${SOURCE_DATE_EPOCH:-1782344232}" {} + 2>/dev/null || true
 
 echo "== E1.2 kernel make directo (vmlinux vmlinuz, initramfs embebido) =="
 export STAGING_DIR="$STAGING/target-mipsel_24kc_musl"
