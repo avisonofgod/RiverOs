@@ -3,11 +3,15 @@
 # NO toca .config del arbol (generado por OpenWrt); solo re-ejecuta el make
 # kernel con el entorno exacto y empaqueta ELF netboot (kernel-bin|append-dtb-elf).
 #
-# Uso: ./build-riveros.sh [OPENWRT_TREE]   (default: /home/proyectos/openwrt)
+# Uso: ./build-riveros.sh [OPENWRT_TREE] [ROOTFS_DIR] [NODES_FILE]
+#   default: root-ramips de OpenWrt + initramfs-base-files.txt (imagen v33)
+#   E2: ROOTFS_DIR=/tmp/rootfs-e2 NODES_FILE=core/rootfs-riveros/initramfs-nodes.txt
 set -Eeuo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OPENWRT="${1:-/home/proyectos/openwrt}"
+ROOTFS_SRC="${2:-$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips}"
+NODES_FILE="${3:-$OPENWRT/target/linux/generic/image/initramfs-base-files.txt}"
 K="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94"
 STAGING="$OPENWRT/staging_dir"
 TC="$(ls -d "$STAGING"/toolchain-mipsel_24kc* | head -1)"
@@ -32,9 +36,10 @@ KMAKE_FLAGS=(KCFLAGS="-fmacro-prefix-map=$OPENWRT/build_dir/target-mipsel_24kc_m
 echo "== E1.1 SetInitramfs (replica Kernel/SetInitramfs) =="
 # OpenWrt deja .config SIN initramfs tras compile normal (SetNoInitramfs);
 # install hace SetInitramfs: apunta INITRAMFS_SOURCE al rootfs + borra cpio.
-RROOT="$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips"
-INITRAMFS_EXTRA="$OPENWRT/target/linux/generic/image/initramfs-base-files.txt"
-[ -d "$RROOT" ] || { echo "ERROR: no root-ramips (correr build-kernel.sh)" >&2; exit 1; }
+RROOT="$ROOTFS_SRC"
+INITRAMFS_EXTRA="$NODES_FILE"
+[ -d "$RROOT" ] || { echo "ERROR: no rootfs $RROOT (correr build-kernel.sh o build-rootfs-e2.sh)" >&2; exit 1; }
+[ -f "$INITRAMFS_EXTRA" ] || { echo "ERROR: no nodes file $INITRAMFS_EXTRA" >&2; exit 1; }
 cp "$K/.config" "$K/.config.old"
 grep -v -e INITRAMFS -e CONFIG_RD_ -e CONFIG_BLK_DEV_INITRD "$K/.config.old" > "$K/.config"
 echo 'CONFIG_BLK_DEV_INITRD=y' >> "$K/.config"
