@@ -1,0 +1,7 @@
+NAME="RiverOs"
+VERSION="25.12-NETEST"
+ID="riveros"
+PRETTY_NAME="RiverOs 25.12-NETEST"
+VERSION_ID="25.12-netest"
+HOME_URL="https://github.com/avisonofgod/RiverOs"
+BUG_URL="https://github.com/avisonofgod/RiverOs/issues"
