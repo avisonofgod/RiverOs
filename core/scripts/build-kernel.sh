@@ -38,6 +38,11 @@ echo "== 3. kernel compile =="
 make target/linux/compile V=s -j"$(nproc)" 2>&1 | tee /tmp/riveros-linux-compile.log | tail -5
 
 echo "== 4. imagen initramfs (netboot) =="
+# re-empaquetar initramfs con files/ del subtarget (base-files): package/install
+# reinstala los archivos en el rootfs; limpiar vmlinux-initramfs fuerza rebuild del cpio
+make package/install V=s -j"$(nproc)" 2>&1 | tail -3
+rm -f "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.cpio" \
+      "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.o"
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
 
 IMG="$(ls -t bin/targets/ramips/mt7621/riveros-*initramfs-kernel.bin 2>/dev/null | head -n1)"
