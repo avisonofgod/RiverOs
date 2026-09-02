@@ -29,19 +29,43 @@ KMAKE_FLAGS=(KCFLAGS="-fmacro-prefix-map=$OPENWRT/build_dir/target-mipsel_24kc_m
   CONFIG_SHELL="bash" V='' cmd_syscalls=
   CC="${CROSS}gcc" KERNELRELEASE="6.12.94")
 
-echo "== E1.1 kernel make directo (vmlinux vmlinuz) =="
+echo "== E1.1 SetInitramfs (replica Kernel/SetInitramfs) =="
+# OpenWrt deja .config SIN initramfs tras compile normal (SetNoInitramfs);
+# install hace SetInitramfs: apunta INITRAMFS_SOURCE al rootfs + borra cpio.
+RROOT="$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips"
+INITRAMFS_EXTRA="$OPENWRT/target/linux/generic/image/initramfs-base-files.txt"
+[ -d "$RROOT" ] || { echo "ERROR: no root-ramips (correr build-kernel.sh)" >&2; exit 1; }
+cp "$K/.config" "$K/.config.old"
+grep -v -e INITRAMFS -e CONFIG_RD_ -e CONFIG_BLK_DEV_INITRD "$K/.config.old" > "$K/.config"
+echo 'CONFIG_BLK_DEV_INITRD=y' >> "$K/.config"
+echo "CONFIG_INITRAMFS_SOURCE=\"$RROOT $INITRAMFS_EXTRA\"" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_PRESERVE_MTIME is not set" >> "$K/.config"
+echo "CONFIG_INITRAMFS_ROOT_UID=0" >> "$K/.config"
+echo "CONFIG_INITRAMFS_ROOT_GID=0" >> "$K/.config"
+echo "CONFIG_INITRAMFS_COMPRESSION_LZMA=y" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_GZIP is not set" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_BZIP2 is not set" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_XZ is not set" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_LZO is not set" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_LZ4 is not set" >> "$K/.config"
+echo "# CONFIG_INITRAMFS_COMPRESSION_ZSTD is not set" >> "$K/.config"
+echo 'CONFIG_RD_LZMA=y' >> "$K/.config"
+rm -f "$K/.config.old" "$K/usr/initramfs_data.cpio" "$K/usr/initramfs_data.cpio"*
+
+echo "== E1.2 kernel make directo (vmlinux vmlinuz, initramfs embebido) =="
 export STAGING_DIR="$STAGING/target-mipsel_24kc_musl"
 export PATH="$TC/bin:$STAGING/host/bin:$PATH"
-make -C "$K" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -8
+make -C "$K" "${KMAKE_FLAGS[@]}" olddefconfig 2>&1 | tail -2
+make -C "$K" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -6
 
-echo "== E1.2 ELF netboot (kernel-bin | append-dtb-elf) =="
+echo "== E1.3 ELF netboot (kernel-bin | append-dtb-elf) =="
 OUT="$REPO/core/artifacts/riveros-6.12.94-e1-initramfs-kernel.bin"
 cp "$K/vmlinuz" "$OUT"
 "$OBJ" --set-section-flags=.appended_dtb=alloc,contents \
     --update-section ".appended_dtb=$DTB" "$OUT"
 SHA="$(sha256sum "$OUT" | cut -d' ' -f1)"
 
-echo "== E1.3 gate estatico =="
+echo "== E1.4 gate estatico =="
 SIZE="$(stat -c %s "$OUT")"
 ENTRY="$(readelf -h "$OUT" | awk '/Entry point/{print $4}')"
 HAS_DTB="$(readelf -S "$OUT" | grep -c appended_dtb || true)"
@@ -53,7 +77,7 @@ FAIL=0
 [ "$FAIL" -eq 0 ] || { echo "build-riveros E1: FALLIDO"; exit 1; }
 echo "PASS: entry=$ENTRY dtb=$HAS_DTB size=$SIZE sha=${SHA:0:8}"
 
-echo "== E1.4 comparar con bin OpenWrt =="
+echo "== E1.5 comparar con bin OpenWrt =="
 OW_BIN="$OPENWRT/bin/targets/ramips/mt7621/riveros-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin"
 if [ -f "$OW_BIN" ]; then
   OW_SHA="$(sha256sum "$OW_BIN" | cut -d' ' -f1)"
