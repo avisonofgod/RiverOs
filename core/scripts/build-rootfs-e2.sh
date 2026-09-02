@@ -14,6 +14,8 @@ mkdir -p "$DEST"/{bin,sbin,usr/sbin,etc/dropbear,etc/config,lib,proc,sys,dev,tmp
 # binarios (ya compilados por toolchain RiverOs/OpenWrt — GPL, mismos que redistribuimos)
 cp "$SRC/bin/busybox" "$DEST/bin/"
 cp "$SRC/usr/sbin/dropbear" "$DEST/usr/sbin/"
+cp "$SRC/usr/sbin/brctl" "$DEST/usr/sbin/brctl" 2>/dev/null || echo "WARN sin brctl"
+cp "$SRC/sbin/ip" "$DEST/sbin/ip" 2>/dev/null || echo "WARN sin ip"
 
 # libs dinamicas (musl)
 for l in ld-musl-mipsel-sf.so.1 libc.so libgcc_s.so.1; do
