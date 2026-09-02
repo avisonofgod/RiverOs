@@ -1,0 +1,31 @@
+#!/bin/sh
+# RiverOs /init — E2 rootfs PROPIO (sin procd/netifd/uci/apk)
+# kernel -> /init -> red manual fija -> dropbear -> loop
+# Puertos DTB RB750Gr3: wan=ether1, lan2-lan5=ether2-5
+export INITRAMFS=1
+
+echo "RiverOs init: mounting"
+mount -t proc proc /proc 2>/dev/null
+mount -t sysfs sysfs /sys 2>/dev/null
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || mdev -s 2>/dev/null
+mkdir -p /tmp /var/run /var/log /etc/dropbear 2>/dev/null
+
+echo "RiverOs init: network manual"
+ifconfig lo up 2>/dev/null
+brctl addbr br-lan 2>/dev/null
+for p in lan2 lan3 lan4 lan5; do
+    ifconfig $p up 2>/dev/null
+    brctl addif br-lan $p 2>/dev/null
+done
+ifconfig br-lan 192.168.88.1 netmask 255.255.255.0 up 2>/dev/null
+ifconfig wan up 2>/dev/null
+ifconfig wan 192.168.88.3 netmask 255.255.255.0 up 2>/dev/null
+
+echo "RiverOs init: dropbear"
+/usr/sbin/dropbear -R -p 22 2>/dev/null
+
+echo "RiverOs init: OK (wan 192.168.88.3, br-lan 192.168.88.1)"
+# loop: mantener init vivo (si muere, no panic)
+while true; do
+    sleep 3600
+done
