@@ -85,4 +85,34 @@ ls -lh "$PKG_DIR/"
 echo "NETBOOT LISTO: pkg/riveros-6.12.94-initramfs-kernel.bin sha=$SHA"
 echo "-> reiniciar loader (loader-riveros.sh) para servir el bin fresco"
 
+echo "== 8. manifest BUILD.json =="
+CFG_SHA="$(sha256sum "$REPO/core/configs/kernel/mt7621-rb750gr3.config" | cut -d' ' -f1)"
+CPIO="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.cpio"
+CPIO_FILES="$(cpio -it < "$CPIO" 2>/dev/null | wc -l)"
+CPIO_APPS="$(cpio -it < "$CPIO" 2>/dev/null | grep -cE '^sbin/|^usr/sbin/' || true)"
+PKG_LIST="$(grep -oE '^CONFIG_DEFAULT_[a-z0-9-]+=y' "$REPO/core/configs/target-rb750gr3.config" | sed 's/CONFIG_DEFAULT_//;s/=y//' | tr '\n' ' ')"
+TC_VER="$(ls "$OPENWRT/staging_dir/toolchain-mipsel_24kc"*/ 2>/dev/null | head -1)"
+OUT="$REPO/core/artifacts/BUILD-latest.json"
+mkdir -p "$REPO/core/artifacts"
+cat > "$OUT" <<EOF
+{
+  "version": "${SHA:0:8}",
+  "fecha": "$(date -Is)",
+  "kernel": "6.12.94",
+  "bin": "$IMG",
+  "bin_sha256": "$SHA",
+  "bin_bytes": "$SIZE",
+  "config_sha256": "$CFG_SHA",
+  "symbols": {"y": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=y$' "$REPO/core/configs/kernel/mt7621-rb750gr3.config"), "m": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=m$' "$REPO/core/configs/kernel/mt7621-rb750gr3.config")},
+  "initramfs_cpio_files": $CPIO_FILES,
+  "initramfs_apps": $CPIO_APPS,
+  "target_packages_default": "$PKG_LIST",
+  "toolchain": "$TC_VER",
+  "entry": "$ENTRY",
+  "max_bytes": $MAX
+}
+EOF
+cp "$OUT" "$REPO/core/artifacts/BUILD-$SHA.json"
+echo "manifest: $OUT ($(stat -c %s "$OUT") B)"
+
 echo "build-kernel.sh: OK"
