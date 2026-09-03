@@ -57,6 +57,9 @@ make package/compile V=s -j"$(nproc)" 2>&1 | tee /tmp/riveros-package-compile.lo
 echo "== 4. imagen initramfs (netboot) =="
 # re-empaquetar initramfs con files/ del subtarget (base-files): package/install
 # reinstala los archivos en el rootfs; limpiar vmlinux-initramfs fuerza rebuild del cpio
+# rootfs LIMPIO primero: package/install no quita paquetes viejos del root-ramips
+# (fix 2026-09-03: builds con .config menor dejaban residuos -> initramfs inflado)
+rm -rf "$OPENWRT/build_dir/target-mipsel_24kc_musl/root-ramips"
 make package/install V=s -j"$(nproc)" 2>&1 | tail -3
 # rebrand post-install: banner/os-release/device_info los genera el PAQUETE base-files
 # y pisan al subtarget; sobrescribir en root-ramips (os-release = symlink a usr/lib/os-release)
@@ -69,7 +72,9 @@ rm -f "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12
       "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.o"
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
 
-IMG="$(find bin/targets/ramips/mt7621 -maxdepth 1 -name 'riveros-*initramfs-kernel.bin' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)"
+# glob amplio: el prefijo puede ser riveros-* u openwrt-* segun como kconfig
+# resuelva CONFIG_VERSION_DIST tras defconfig (fix 2026-09-03, builds risp)
+IMG="$(find bin/targets/ramips/mt7621 -maxdepth 1 -name '*initramfs-kernel.bin' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)"
 if [ -z "$IMG" ]; then
   echo "ERROR: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)" >&2
   exit 1
