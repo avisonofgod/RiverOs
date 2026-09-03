@@ -33,10 +33,10 @@ hardware, o hay que resolver el probe del driver (tema abierto, ver abajo).
 - core/rootfs-riveros/init             — init standalone/via A (reescrito N veces)
 - core/rootfs-riveros/lib/preinit/     — 10_indicate_preinit, 70_initramfs_test, 99_red_manual
 - core/rootfs-riveros/initramfs-nodes.txt — nodos /dev (watchdog, ptmx)
-- core/configs/kernel/mt7621-rb750gr3.config — config kernel v33 (727/21)
-- core/configs/kernel/mt7621-rb750gr3-risp.config — v33 + dataplane =y (nft/ppp/htb/ifb/tun/wg)
-- core/configs/target-rb750gr3.config  — target v33 (42 paquetes)
-- core/configs/target-rb750gr3-risp.config — target risp (dataplane userspace)
+- core/perfiles/v33/kernel.config — config kernel v33 (727/21)
+- core/perfiles/risp/kernel.config — v33 + dataplane =y (nft/ppp/htb/ifb/tun/wg)
+- core/perfiles/v33/target.config  — target v33 (42 paquetes)
+- core/perfiles/risp/target.config — target risp (dataplane userspace)
 - targets/mips/devices/mikrotik-rb750gr3/files/ — base-files (network, init.d, preinit)
 - patches/kernel/                      — parches kernel propios
 - core/docs/                           — arquitectura, hardware, kernel-build, netboot

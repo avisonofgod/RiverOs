@@ -6,13 +6,13 @@
 # prepare -> compile -> install -> initramfs-kernel.bin.
 #
 # Uso: ./build-kernel.sh [arbol_dir] [target_config] [kernel_config]
-#   defaults: core/configs/target-rb750gr3.config (v33) + kernel/mt7621-rb750gr3.config
+#   defaults: core/perfiles/v33/{target,kernel}.config (v33 funcional)
 set -Eeuo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # raiz del repo
 OPENWRT="${1:-$REPO/../openwrt}"
-TCONF="${2:-$REPO/core/configs/target-rb750gr3.config}"
-KCONF="${3:-$REPO/core/configs/kernel/mt7621-rb750gr3.config}"
+TCONF="${2:-$REPO/core/perfiles/v33/target.config}"
+KCONF="${3:-$REPO/core/perfiles/v33/kernel.config}"
 
 [ -d "$OPENWRT/.git" ] || { echo "ERROR: $OPENWRT no es un arbol RiverOs (usa scripts/checkout-riveros.sh)" >&2; exit 1; }
 [ -f "$TCONF" ] || { echo "ERROR: target config no existe: $TCONF" >&2; exit 1; }
@@ -25,7 +25,7 @@ echo "== 0. host tools / toolchain =="
 # target/linux/compile no construye las host tools: en un arbol recien clonado
 # falla con "flex: fatal internal error, exec of staging_dir/host/bin/m4 failed"
 if [ ! -x staging_dir/host/bin/m4 ] || [ ! -x staging_dir/host/bin/flex ]; then
-  cp "$REPO/core/configs/target-rb750gr3.config" .config
+  cp "$TCONF" .config
   make defconfig >/dev/null
   make tools/install toolchain/install -j"$(nproc)" 2>&1 | tee /tmp/riveros-tools.log | tail -3
 fi
@@ -118,12 +118,13 @@ echo "NETBOOT LISTO: pkg/riveros-6.12.94-initramfs-kernel.bin sha=$SHA"
 echo "-> reiniciar loader (loader-riveros.sh) para servir el bin fresco"
 fi
 
-echo "== 8. manifest BUILD.json =="
-CFG_SHA="$(sha256sum "$REPO/core/configs/kernel/mt7621-rb750gr3.config" | cut -d' ' -f1)"
+echo "== 8. manifest BUILD.json ==
+perfil: $KCONF / $TCONF"
+CFG_SHA="$(sha256sum "$KCONF" | cut -d' ' -f1)"
 CPIO="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.cpio"
 CPIO_FILES="$(cpio -it < "$CPIO" 2>/dev/null | wc -l)"
 CPIO_APPS="$(cpio -it < "$CPIO" 2>/dev/null | grep -cE '^sbin/|^usr/sbin/' || true)"
-PKG_LIST="$(grep -oE '^CONFIG_DEFAULT_[a-z0-9-]+=y' "$REPO/core/configs/target-rb750gr3.config" | sed 's/CONFIG_DEFAULT_//;s/=y//' | tr '\n' ' ')"
+PKG_LIST="$(grep -oE '^CONFIG_DEFAULT_[a-z0-9-]+=y' "$TCONF" | sed 's/CONFIG_DEFAULT_//;s/=y//' | tr '\n' ' ')"
 TC_VER="$(find "$OPENWRT/staging_dir" -maxdepth 1 -type d -name 'toolchain-mipsel_24kc*' -printf '%f\n' 2>/dev/null | head -1)"
 OUT="$REPO/core/artifacts/BUILD-latest.json"
 mkdir -p "$REPO/core/artifacts"
@@ -136,7 +137,7 @@ cat > "$OUT" <<EOF
   "bin_sha256": "$SHA",
   "bin_bytes": "$SIZE",
   "config_sha256": "$CFG_SHA",
-  "symbols": {"y": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=y$' "$REPO/core/configs/kernel/mt7621-rb750gr3.config"), "m": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=m$' "$REPO/core/configs/kernel/mt7621-rb750gr3.config")},
+  "symbols": {"y": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=y$' "$KCONF"), "m": $(grep -cE '^CONFIG_[A-Za-z0-9_]+=m$' "$KCONF")},
   "initramfs_cpio_files": $CPIO_FILES,
   "initramfs_apps": $CPIO_APPS,
   "target_packages_default": "$PKG_LIST",
