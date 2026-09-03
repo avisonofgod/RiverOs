@@ -4,4 +4,7 @@ nod /dev/zero 666 0 0 c 1 5
 nod /dev/tty 666 0 0 c 5 0
 nod /dev/random 666 0 0 c 1 8
 nod /dev/urandom 666 0 0 c 1 9
+nod /dev/kmsg 600 0 0 c 1 11
+nod /dev/ptmx 666 0 0 c 5 2
+nod /dev/watchdog 600 0 0 c 10 130
 dir /dev/pts 755 0 0

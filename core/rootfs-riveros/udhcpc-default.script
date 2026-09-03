@@ -1,0 +1,45 @@
+#!/bin/sh
+# RiverOs udhcpc default.script — ifconfig-based (sin applet ip)
+# Auditoria Copilot: sin 'down' en deconfig/bound (no bajar la iface antes del
+# primer DHCPDISCOVER); route del default dev; netmask default si subnet vacio.
+LOG=/tmp/udhcpc.log
+echo "event=$1 interface=$interface ip=$ip subnet=$subnet router=$router dns=$dns broadcast=$broadcast" >> "$LOG" 2>/dev/null
+
+case "$1" in
+    deconfig)
+        # limpiar IP sin bajar administrativamente la interfaz
+        ifconfig "$interface" 0.0.0.0 >> "$LOG" 2>&1
+        ;;
+    bound|renew)
+        NETMASK="$subnet"
+        [ -n "$NETMASK" ] || NETMASK=255.255.255.0
+        # udhcpc entrega mascara decimal; si viniera CIDR, convertir
+        case "$NETMASK" in
+            8)  NETMASK=255.0.0.0 ;;
+            16) NETMASK=255.255.0.0 ;;
+            24) NETMASK=255.255.255.0 ;;
+            25) NETMASK=255.255.255.128 ;;
+            26) NETMASK=255.255.255.192 ;;
+            27) NETMASK=255.255.255.224 ;;
+            28) NETMASK=255.255.255.240 ;;
+            29) NETMASK=255.255.255.248 ;;
+            30) NETMASK=255.255.255.252 ;;
+        esac
+        if [ -n "$broadcast" ]; then
+            ifconfig "$interface" "$ip" netmask "$NETMASK" broadcast "$broadcast" up >> "$LOG" 2>&1
+        else
+            ifconfig "$interface" "$ip" netmask "$NETMASK" up >> "$LOG" 2>&1
+        fi
+        if [ -n "$router" ] && command -v route >/dev/null 2>&1; then
+            # primer gateway del listado (router puede traer varios; sin awk)
+            GW=${router%% *}
+            route del default dev "$interface" >> "$LOG" 2>&1
+            route add default gw "$GW" dev "$interface" >> "$LOG" 2>&1
+        fi
+        { echo "IP=$ip"; echo "NETMASK=$NETMASK"; echo "ROUTER=$router"; } > /tmp/dhcp-wan.state
+        ;;
+    nak|leasefail)
+        echo "DHCP failure: $1" >> "$LOG"
+        ;;
+esac
+exit 0

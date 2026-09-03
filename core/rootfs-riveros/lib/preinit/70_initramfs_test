@@ -1,0 +1,10 @@
+#!/bin/sh
+initramfs_test() {
+	if [ -n "$INITRAMFS" ]; then
+		boot_run_hook initramfs
+		preinit_ip_deconfig
+		break
+	fi
+}
+
+boot_hook_add preinit_main initramfs_test
