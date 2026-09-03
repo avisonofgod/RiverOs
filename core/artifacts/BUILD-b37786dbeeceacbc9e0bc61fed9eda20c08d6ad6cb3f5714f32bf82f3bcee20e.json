@@ -1,0 +1,16 @@
+{
+  "version": "b37786db",
+  "fecha": "2026-09-03T00:48:04-04:00",
+  "kernel": "6.12.94",
+  "bin": "bin/targets/ramips/mt7621/openwrt-ramips-mt7621-mikrotik_routerboard-750gr3-initramfs-kernel.bin",
+  "bin_sha256": "b37786dbeeceacbc9e0bc61fed9eda20c08d6ad6cb3f5714f32bf82f3bcee20e",
+  "bin_bytes": "5314316",
+  "config_sha256": "2858a779559fee5ecb8d86f6418da4d169d9409f13e19d4743da5f053c10f111",
+  "symbols": {"y": 727, "m": 21},
+  "initramfs_cpio_files": 661,
+  "initramfs_apps": 71,
+  "target_packages_default": "base-files ca-bundle dnsmasq dropbear firewall4 fstools kmod-crypto-hw-eip93 kmod-gpio-button-hotplug kmod-leds-gpio kmod-nft-offload kmod-usb3 libc libgcc libustream-mbedtls logd mtd netifd nftables odhcp6c odhcpd-ipv6only ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed urngd ",
+  "toolchain": "toolchain-mipsel_24kc_gcc-14.3.0_musl",
+  "entry": "0x80b71000",
+  "max_bytes": 6987776
+}

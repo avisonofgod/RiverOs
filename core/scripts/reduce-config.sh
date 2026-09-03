@@ -34,6 +34,6 @@ echo "simbolos apagados: $CUT"
 echo "=y restantes: $Y"
 echo "=m restantes: $(grep -cE '^CONFIG_[A-Za-z0-9_]+=m$' "$OUT" || true)"
 # gate: un .config reducido con 0 simbolos =y o con valores invalidos es basura
-# (asi se colo core/configs/kernel/mt7621-rb750gr3-min.config con 0 =y)
+# (asi se colo core/configs/kernel/mt7621-rb750gr3-min.config con 0 =y; canonicos en core/perfiles/)
 [ "$BAD" -eq 0 ] || { echo "ERROR: $BAD lineas CONFIG_X=CONFIG_X en $OUT"; exit 1; }
 [ "$Y" -gt 100 ] || { echo "ERROR: solo $Y simbolos =y en $OUT (config inservible)"; exit 1; }
