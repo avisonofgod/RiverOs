@@ -16,9 +16,21 @@ OPENWRT="${1:-$REPO/../openwrt}"
 cd "$OPENWRT"
 export FORCE_UNSAFE_CONFIGURE=1
 
+echo "== 0. host tools / toolchain =="
+# target/linux/compile no construye las host tools: en un arbol recien clonado
+# falla con "flex: fatal internal error, exec of staging_dir/host/bin/m4 failed"
+if [ ! -x staging_dir/host/bin/m4 ] || [ ! -x staging_dir/host/bin/flex ]; then
+  cp "$REPO/core/configs/target-rb750gr3.config" .config
+  make defconfig >/dev/null
+  make tools/install toolchain/install -j"$(nproc)" 2>&1 | tee /tmp/riveros-tools.log | tail -3
+fi
+
 echo "== 1. archivos del repo -> arbol =="
 # 1a. .config del target (paquetes del initramfs)
 cp "$REPO/core/configs/target-rb750gr3.config" .config
+# defconfig materializa las DEPENDS del target config (sin esto, p.ej. curl
+# entra sin libcurl y la imagen falla en runtime con "missing libcurl.so.4")
+make defconfig >/dev/null
 # 1b. kernel config (fuente primaria)
 cp "$REPO/core/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
 # 1c. parches del kernel (limpiar viejos del arbol para evitar duplicados)
@@ -37,6 +49,11 @@ make target/linux/prepare V=s 2>&1 | tee /tmp/riveros-linux-prepare.log | tail -
 echo "== 3. kernel compile =="
 make target/linux/compile V=s -j"$(nproc)" 2>&1 | tee /tmp/riveros-linux-compile.log | tail -5
 
+echo "== 3b. paquetes del target =="
+# package/install solo INSTALA ipks ya construidos: sin package/compile los
+# paquetes nuevos del target config nunca se compilan y la imagen sale vieja
+make package/compile V=s -j"$(nproc)" 2>&1 | tee /tmp/riveros-package-compile.log | tail -5
+
 echo "== 4. imagen initramfs (netboot) =="
 # re-empaquetar initramfs con files/ del subtarget (base-files): package/install
 # reinstala los archivos en el rootfs; limpiar vmlinux-initramfs fuerza rebuild del cpio
@@ -52,7 +69,7 @@ rm -f "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12
       "$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94/usr/initramfs_data.o"
 make target/linux/install V=s -j"$(nproc)" 2>&1 | tail -5
 
-IMG="$(ls -t bin/targets/ramips/mt7621/riveros-*initramfs-kernel.bin 2>/dev/null | head -n1)"
+IMG="$(find bin/targets/ramips/mt7621 -maxdepth 1 -name 'riveros-*initramfs-kernel.bin' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)"
 if [ -z "$IMG" ]; then
   echo "ERROR: no initramfs-kernel.bin (revisar target/linux/ramips/image/mt7621.mk)" >&2
   exit 1
@@ -77,6 +94,9 @@ echo "PASS: entry=$ENTRY dtb=$HAS_DTB size=$SIZE max=$MAX sha=$SHA"
 
 echo "== 7. servir a pkg (netboot listo) =="
 PKG_DIR="${PKG_DIR:-/root/netinstall-openwrt/pkg}"
+if [ "${SKIP_PKG:-0}" = "1" ]; then
+  echo "SKIP_PKG=1: no se copia a $PKG_DIR (build de verificacion)"
+else
 [ -d "$PKG_DIR" ] || { echo "ERROR: $PKG_DIR no existe"; exit 1; }
 rm -f "$PKG_DIR"/*.bin "$PKG_DIR"/*.sha256 2>/dev/null || true
 cp "$IMG" "$PKG_DIR/riveros-6.12.94-initramfs-kernel.bin"
@@ -84,6 +104,7 @@ sha256sum "$PKG_DIR/riveros-6.12.94-initramfs-kernel.bin" > "$PKG_DIR/riveros-6.
 ls -lh "$PKG_DIR/"
 echo "NETBOOT LISTO: pkg/riveros-6.12.94-initramfs-kernel.bin sha=$SHA"
 echo "-> reiniciar loader (loader-riveros.sh) para servir el bin fresco"
+fi
 
 echo "== 8. manifest BUILD.json =="
 CFG_SHA="$(sha256sum "$REPO/core/configs/kernel/mt7621-rb750gr3.config" | cut -d' ' -f1)"
@@ -91,7 +112,7 @@ CPIO="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.
 CPIO_FILES="$(cpio -it < "$CPIO" 2>/dev/null | wc -l)"
 CPIO_APPS="$(cpio -it < "$CPIO" 2>/dev/null | grep -cE '^sbin/|^usr/sbin/' || true)"
 PKG_LIST="$(grep -oE '^CONFIG_DEFAULT_[a-z0-9-]+=y' "$REPO/core/configs/target-rb750gr3.config" | sed 's/CONFIG_DEFAULT_//;s/=y//' | tr '\n' ' ')"
-TC_VER="$(basename "$(ls -d "$OPENWRT/staging_dir/toolchain-mipsel_24kc"* 2>/dev/null | head -1)")"
+TC_VER="$(find "$OPENWRT/staging_dir" -maxdepth 1 -type d -name 'toolchain-mipsel_24kc*' -printf '%f\n' 2>/dev/null | head -1)"
 OUT="$REPO/core/artifacts/BUILD-latest.json"
 mkdir -p "$REPO/core/artifacts"
 cat > "$OUT" <<EOF
