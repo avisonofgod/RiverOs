@@ -4,11 +4,14 @@ config interface 'loopback'
 	option ipaddr '127.0.0.1'
 	option netmask '255.0.0.0'
 
+# lan y wan en /24 DISTINTOS: con ambos en 192.168.88.0/24 la ruta conectada
+# sale por una sola interfaz y el router deja de responder ARP en la otra.
+# 192.168.88.0/24 queda reservado a la red del loader netboot (wan).
 config interface 'lan'
 	option device 'br-lan'
 	option type 'bridge'
 	option proto 'static'
-	option ipaddr '192.168.88.1'
+	option ipaddr '192.168.10.1'
 	option netmask '255.255.255.0'
 	list ports 'lan2'
 	list ports 'lan3'

@@ -3,8 +3,15 @@
 # eth0 ya lo ocupa el CPU port del switch: liberarlo primero (cpu0).
 START=98
 STOP=1
+# Solo para el modo consola/rescate: si netifd ya gestiona la red con los
+# nombres del DTS (wan/lan2-5), renombrar wan->eth0 aqui deja a netifd sin
+# devices y tumba la LAN. En ese caso no se toca nada.
 start() {
 	ip link set lo up
+	if grep -qE "option device 'wan'|list ports 'lan[2-5]'" /etc/config/network 2>/dev/null; then
+		echo "riveros-red: netifd usa wan/lan2-5 (UCI); no se renombra" >&2
+		return 0
+	fi
 	if [ -d /sys/class/net/eth0 ] && [ -d /sys/class/net/wan ]; then
 		ip link set eth0 down 2>/dev/null
 		ip link set eth0 name cpu0 2>/dev/null && echo "riveros-red: cpu port eth0 -> cpu0"

@@ -5,9 +5,19 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 WAN=wan
 BR=br-lan
 LAN_PORTS="lan2 lan3 lan4 lan5"
-LAN_IP=192.168.88.1
+# br-lan en un /24 propio: 192.168.88.0/24 es la red del loader netboot (wan)
+LAN_IP=192.168.10.1
+LAN_IP_ALT=192.168.99.1
 LAN_NETMASK=255.255.255.0
 LOG=/tmp/init.log
+# bloque ethernet MT7621: gmac0 (conduit DSA) + gmac1 (wan) + mdio con MT7530
+ETH_DRV=/sys/bus/platform/drivers/mtk_soc_eth
+ETH_DEV=1e100000.ethernet
+WAN_TIMEOUT=180
+# NO se alimenta /dev/watchdog: el WDT que deja activo RouterBOOT lo administra
+# el driver mt7621_wdt (CONFIG_WATCHDOG_HANDLE_BOOT_ENABLED=y). Alimentarlo
+# desde userspace correlaciono 6/6 con boots sin ethernet
+# (KERNELDESDE0/ERRORES-RED-E2.md, ERROR 2).
 
 log() {
 	echo "[init] $*" >> "$LOG" 2>/dev/null
@@ -15,34 +25,53 @@ log() {
 }
 fail() {
 	log "ERROR: $*"
-	while :; do sleep 60; done
+	while :; do
+		log "detenido: $*"
+		sleep 30
+	done
 }
 
 mkdir -p /proc /sys /dev /dev/pts /tmp /run /var /etc/dropbear /etc/udhcpc 2>/dev/null
 mount -t proc proc /proc 2>>"$LOG" || fail "mount proc fallo"
 mount -t sysfs sysfs /sys 2>>"$LOG" || fail "mount sysfs fallo"
-mount -t devpts devpts /dev/pts 2>>"$LOG" || fail "mount devpts fallo"
+mount -t devpts devpts /dev/pts 2>>"$LOG" || log "WARN: mount devpts fallo"
 
 [ -c /dev/ptmx ] || mknod -m 666 /dev/ptmx c 5 2 2>>"$LOG" ||
-	fail "mknod ptmx fallo"
+	log "WARN: mknod ptmx fallo"
 [ -c /dev/kmsg ] || mknod -m 600 /dev/kmsg c 1 11 2>>"$LOG" ||
-	fail "mknod kmsg fallo"
+	log "WARN: mknod kmsg fallo"
 log "mounts ok; interfaces=$(ls /sys/class/net/ 2>/dev/null)"
 
 # /etc/preinit termina en 70_initramfs_test mediante break y devuelve aqui.
 export INITRAMFS=1
 export PREINIT=1
 [ -x /etc/preinit ] || fail "falta /etc/preinit"
-/etc/preinit >>"$LOG" 2>&1 || fail "/etc/preinit fallo"
+/etc/preinit >>"$LOG" 2>&1 || log "WARN: /etc/preinit devolvio error"
 log "preinit returned; interfaces=$(ls /sys/class/net/ 2>/dev/null)"
 
+has_dev() { [ -d "/sys/class/net/$1" ]; }
+
+# reintento del probe del bloque ethernet: si mtk_soc_eth no llego a bind
+# (probe no-determinista en reboot caliente) un bind manual lo vuelve a
+# intentar; unbind falla silencioso cuando el device nunca estuvo bound.
+probe_retry() {
+	[ -d "$ETH_DRV" ] || return 1
+	echo "$ETH_DEV" > "$ETH_DRV/unbind" 2>/dev/null
+	echo "$ETH_DEV" > "$ETH_DRV/bind" 2>/dev/null
+	log "probe_retry mtk_soc_eth ($ETH_DEV)"
+}
+
 wait_for_netdev() {
-	local iface="$1" timeout="$2" n=0
-	while [ ! -d "/sys/class/net/$iface" ]; do
-		[ "$n" -ge "$timeout" ] && {
-			log "netdev timeout=$iface"
+	iface="$1"
+	timeout="$2"
+	n=0
+	while ! has_dev "$iface"; do
+		if [ "$n" -ge "$timeout" ]; then
+			log "netdev timeout=$iface (${timeout}s)"
 			return 1
-		}
+		fi
+		# un reintento de probe por minuto mientras no exista el netdev
+		[ $((n % 60)) -eq 59 ] && probe_retry
 		sleep 1
 		n=$((n + 1))
 	done
@@ -50,7 +79,9 @@ wait_for_netdev() {
 }
 
 wait_for_carrier() {
-	local iface="$1" timeout="$2" n=0
+	iface="$1"
+	timeout="$2"
+	n=0
 	while [ "$n" -lt "$timeout" ]; do
 		[ "$(cat "/sys/class/net/$iface/carrier" 2>/dev/null)" = "1" ] &&
 			return 0
@@ -61,58 +92,128 @@ wait_for_carrier() {
 	return 1
 }
 
-wait_for_netdev "$WAN" 600 || fail "wan no creada tras 600s"
+net24() { echo "${1%.*}"; }
 
-ifconfig lo up 2>>"$LOG" || fail "lo up fallo"
-# master/conduit DSA UP antes que los puertos (orden documentado kernel DSA)
-if [ -d /sys/class/net/eth0 ]; then
-	ifconfig eth0 up 2>>"$LOG" || log "WARN: eth0 up fallo"
-	log "eth0 (conduit DSA) up"
-fi
-if [ -d /sys/class/net/sw0 ]; then
-	ifconfig sw0 up 2>>"$LOG" || log "WARN: sw0 up fallo"
-	log "sw0 (conduit DSA) up"
-fi
-ifconfig "$WAN" up 2>>"$LOG" || fail "wan up fallo"
-wait_for_carrier "$WAN" 10 || log "wan sin carrier; DHCP continua"
+iface_ip() {
+	ifconfig "$1" 2>/dev/null | sed -n 's/.*inet addr:\([0-9.]*\).*/\1/p'
+}
 
-command -v udhcpc >/dev/null 2>&1 ||
-	fail "falta applet udhcpc"
-[ -x /etc/udhcpc/default.script ] ||
-	fail "falta default.script"
-log "udhcpc start"
-udhcpc -i "$WAN" -s /etc/udhcpc/default.script -p /run/udhcpc-wan.pid \
-	-t 0 -T 3 -x hostname:RiverOs >>/tmp/udhcpc-wan.log 2>&1 &
-UDCPID=$!
-sleep 2
-kill -0 "$UDCPID" 2>/dev/null ||
-	log "ERROR: udhcpc murio a los 2s"
+start_dropbear() {
+	[ -x /usr/sbin/dropbear ] || {
+		log "WARN: falta /usr/sbin/dropbear"
+		return 1
+	}
+	/usr/sbin/dropbear -R -p 22 >>/tmp/dropbear.log 2>&1 &
+	DROPBEAR_PID=$!
+	log "dropbear pid=$DROPBEAR_PID"
+}
 
-# br-lan SOLO con los LAN que existan (probe del MT7530 puede ser parcial:
-# wan/gmac1 vivo pero lan2-5 ausentes — nunca fail ni espera por lan faltante)
-AVAIL_LAN=""
-for iface in $LAN_PORTS; do
-	if [ -d "/sys/class/net/$iface" ]; then
-		AVAIL_LAN="$AVAIL_LAN $iface"
+start_udhcpc() {
+	has_dev "$WAN" || return 1
+	command -v udhcpc >/dev/null 2>&1 || {
+		log "ERROR: falta applet udhcpc"
+		return 1
+	}
+	[ -x /etc/udhcpc/default.script ] || {
+		log "ERROR: falta default.script"
+		return 1
+	}
+	udhcpc -i "$WAN" -s /etc/udhcpc/default.script -p /run/udhcpc-wan.pid \
+		-t 0 -T 3 -x hostname:RiverOs >>/tmp/udhcpc-wan.log 2>&1 &
+	UDHCPC_PID=$!
+	log "udhcpc pid=$UDHCPC_PID"
+}
+
+# br-lan y wan NO pueden compartir /24: con 192.168.88.1 en br-lan y una IP
+# .88.x por DHCP en wan, la ruta conectada del /24 sale por br-lan y el router
+# deja de responder ARP/unicast en la IP del DHCP (sintoma v8: DHCPACK .146 con
+# 'ip neigh FAILED'). Si hay colision, br-lan se mueve a LAN_IP_ALT.
+lan_ip_for() {
+	wan_ip="$(iface_ip "$WAN")"
+	if [ -n "$wan_ip" ] && [ "$(net24 "$wan_ip")" = "$(net24 "$LAN_IP")" ]; then
+		log "colision /24 wan=$wan_ip lan=$LAN_IP -> br-lan usa $LAN_IP_ALT"
+		echo "$LAN_IP_ALT"
+	else
+		echo "$LAN_IP"
 	fi
-done
-if [ -n "$AVAIL_LAN" ]; then
+}
+
+setup_bridge() {
+	avail=""
+	for iface in $LAN_PORTS; do
+		has_dev "$iface" && avail="$avail $iface"
+	done
+	[ -n "$avail" ] || {
+		log "sin lan2-5 (probe MT7530 parcial o ausente) — solo wan"
+		return 1
+	}
 	brctl addbr "$BR" 2>>"$LOG" || log "WARN: addbr fallo (existe?)"
-	for iface in $AVAIL_LAN; do
+	for iface in $avail; do
 		ifconfig "$iface" up 2>>"$LOG"
 		brctl addif "$BR" "$iface" 2>>"$LOG"
 	done
-	ifconfig "$BR" "$LAN_IP" netmask "$LAN_NETMASK" up 2>>"$LOG" \
-		&& log "br-lan listo $LAN_IP (miembros:$AVAIL_LAN)" \
-		|| log "WARN: br-lan config fallo"
+	BR_IP="$(lan_ip_for)"
+	if ifconfig "$BR" "$BR_IP" netmask "$LAN_NETMASK" up 2>>"$LOG"; then
+		log "br-lan listo $BR_IP (miembros:$avail)"
+	else
+		log "WARN: br-lan config fallo"
+	fi
+}
+
+ifconfig lo up 2>>"$LOG" || log "WARN: lo up fallo"
+# master/conduit DSA UP antes que los puertos (orden documentado kernel DSA)
+for conduit in eth0 sw0; do
+	has_dev "$conduit" || continue
+	ifconfig "$conduit" up 2>>"$LOG" || log "WARN: $conduit up fallo"
+	log "$conduit (conduit DSA) up"
+done
+
+# SSH primero: si el probe del switch/gmac es parcial, el acceso por los
+# puertos que SI existen es la unica via de diagnostico (antes el init moria
+# esperando wan 600s y nunca arrancaba dropbear).
+setup_bridge
+start_dropbear
+
+if wait_for_netdev "$WAN" "$WAN_TIMEOUT"; then
+	ifconfig "$WAN" up 2>>"$LOG" || log "WARN: wan up fallo"
+	wait_for_carrier "$WAN" 10 || log "wan sin carrier; DHCP continua"
+	start_udhcpc
+	# el bridge se levanto antes del DHCP: revisar colision de /24 ya con IP
+	sleep 5
+	NEW_BR_IP="$(lan_ip_for)"
+	if [ -d "/sys/class/net/$BR" ] && [ "$NEW_BR_IP" != "$(iface_ip "$BR")" ]; then
+		ifconfig "$BR" "$NEW_BR_IP" netmask "$LAN_NETMASK" up 2>>"$LOG" &&
+			log "br-lan re-direccionado a $NEW_BR_IP"
+	fi
 else
-	log "sin lan2-5 (probe MT7530 parcial o ausente) — solo wan"
+	log "wan ausente tras ${WAN_TIMEOUT}s (probe mtk_soc_eth); sigo supervisando"
 fi
 
-log "dropbear start"
-/usr/sbin/dropbear -R -p 22 >>/tmp/dropbear.log 2>&1 &
 log "init complete — RiverOs E2 via preinit"
 
+# supervision (lo que netifd/procd hacen y el init standalone debe replicar):
+# relanzar udhcpc/dropbear si mueren y seguir reintentando el probe mientras
+# no exista wan.
+n=0
 while :; do
-	sleep 60
+	sleep 10
+	n=$((n + 10))
+	if [ -n "${DROPBEAR_PID:-}" ] && ! kill -0 "$DROPBEAR_PID" 2>/dev/null; then
+		log "dropbear murio; relanzando"
+		start_dropbear
+	fi
+	if has_dev "$WAN"; then
+		if [ -z "${UDHCPC_PID:-}" ] || ! kill -0 "$UDHCPC_PID" 2>/dev/null; then
+			log "udhcpc ausente/muerto; relanzando"
+			ifconfig "$WAN" up 2>/dev/null
+			start_udhcpc
+		fi
+	elif [ $((n % 60)) -eq 0 ]; then
+		probe_retry
+		if has_dev "$WAN"; then
+			ifconfig "$WAN" up 2>>"$LOG"
+			setup_bridge
+			start_udhcpc
+		fi
+	fi
 done

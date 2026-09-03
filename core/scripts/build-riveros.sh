@@ -16,7 +16,7 @@ case "$ROOTFS_SRC" in /*) ;; *) ROOTFS_SRC="$REPO/$ROOTFS_SRC";; esac
 case "$NODES_FILE" in /*) ;; *) NODES_FILE="$REPO/$NODES_FILE";; esac
 K="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/linux-6.12.94"
 STAGING="$OPENWRT/staging_dir"
-TC="$(ls -d "$STAGING"/toolchain-mipsel_24kc* | head -1)"
+TC="$(find "$STAGING" -maxdepth 1 -type d -name 'toolchain-mipsel_24kc*' | head -1)"
 CROSS="$TC/bin/mipsel-openwrt-linux-musl-"
 DTB="$OPENWRT/build_dir/target-mipsel_24kc_musl/linux-ramips_mt7621/image-mt7621_mikrotik_routerboard-750gr3.dtb"
 OBJ="$CROSS"objcopy
@@ -70,7 +70,7 @@ echo "== E1.2 kernel make directo (vmlinux vmlinuz, initramfs embebido) =="
 export STAGING_DIR="$STAGING/target-mipsel_24kc_musl"
 export PATH="$TC/bin:$STAGING/host/bin:$PATH"
 make -C "$K" "${KMAKE_FLAGS[@]}" olddefconfig 2>&1 | tail -2
-make -C "$K" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -6
+make -C "$K" -j"$JOBS" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -6
 
 echo "== E1.3 ELF netboot (kernel-bin | append-dtb-elf) =="
 OUT="$REPO/core/artifacts/riveros-6.12.94-e1-initramfs-kernel.bin"
