@@ -1,0 +1,8 @@
+#!/bin/sh
+# Minimal preinit compatibility for BusyBox without the ip applet.
+# 70_initramfs_test calls this cleanup after the initramfs hook.
+preinit_ip_deconfig() {
+	[ -n "$pi_ifname" ] || return 0
+	grep -q "$pi_ifname" /proc/net/dev || return 0
+	ifconfig "$pi_ifname" 0.0.0.0 2>/dev/null
+}

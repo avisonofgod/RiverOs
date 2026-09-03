@@ -1,33 +1,118 @@
 #!/bin/sh
-# RiverOs /init — E2 rootfs PROPIO (sin procd/netifd/uci/apk)
-# kernel -> /init -> red manual fija -> dropbear -> loop
-# Puertos DTB RB750Gr3: wan=ether1, lan2-lan5=ether2-5
-# Usa applets busybox EXISTENTES: ifconfig + brctl (NO ip: busybox OpenWrt no lo trae)
+# RiverOs E2 via OpenWrt preinit, sin procd/netifd.
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+WAN=wan
+BR=br-lan
+LAN_PORTS="lan2 lan3 lan4 lan5"
+LAN_IP=192.168.88.1
+LAN_NETMASK=255.255.255.0
+LOG=/tmp/init.log
+
+log() {
+	echo "[init] $*" >> "$LOG" 2>/dev/null
+	echo "[init] $*" > /dev/kmsg 2>/dev/null
+}
+fail() {
+	log "ERROR: $*"
+	while :; do sleep 60; done
+}
+
+mkdir -p /proc /sys /dev /dev/pts /tmp /run /var /etc/dropbear /etc/udhcpc 2>/dev/null
+mount -t proc proc /proc 2>>"$LOG" || fail "mount proc fallo"
+mount -t sysfs sysfs /sys 2>>"$LOG" || fail "mount sysfs fallo"
+mount -t devpts devpts /dev/pts 2>>"$LOG" || fail "mount devpts fallo"
+
+[ -c /dev/ptmx ] || mknod -m 666 /dev/ptmx c 5 2 2>>"$LOG" ||
+	fail "mknod ptmx fallo"
+[ -c /dev/kmsg ] || mknod -m 600 /dev/kmsg c 1 11 2>>"$LOG" ||
+	fail "mknod kmsg fallo"
+log "mounts ok; interfaces=$(ls /sys/class/net/ 2>/dev/null)"
+
+# /etc/preinit termina en 70_initramfs_test mediante break y devuelve aqui.
 export INITRAMFS=1
-export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PREINIT=1
+[ -x /etc/preinit ] || fail "falta /etc/preinit"
+/etc/preinit >>"$LOG" 2>&1 || fail "/etc/preinit fallo"
+log "preinit returned; interfaces=$(ls /sys/class/net/ 2>/dev/null)"
 
-echo "RiverOs init: mounting"
-mount -t proc proc /proc 2>/dev/null
-mount -t sysfs sysfs /sys 2>/dev/null
-mount -t devtmpfs devtmpfs /dev 2>/dev/null
-mkdir -p /tmp /var/run /var/log /etc/dropbear 2>/dev/null
+wait_for_netdev() {
+	local iface="$1" timeout="$2" n=0
+	while [ ! -d "/sys/class/net/$iface" ]; do
+		[ "$n" -ge "$timeout" ] && {
+			log "netdev timeout=$iface"
+			return 1
+		}
+		sleep 1
+		n=$((n + 1))
+	done
+	log "netdev ok=$iface (${n}s)"
+}
 
-echo "RiverOs init: network manual"
-ifconfig lo up 2>/dev/null
-brctl addbr br-lan 2>/dev/null
-for p in lan2 lan3 lan4 lan5; do
-    ifconfig $p up 2>/dev/null
-    brctl addif br-lan $p 2>/dev/null
+wait_for_carrier() {
+	local iface="$1" timeout="$2" n=0
+	while [ "$n" -lt "$timeout" ]; do
+		[ "$(cat "/sys/class/net/$iface/carrier" 2>/dev/null)" = "1" ] &&
+			return 0
+		sleep 1
+		n=$((n + 1))
+	done
+	log "carrier timeout=$iface"
+	return 1
+}
+
+wait_for_netdev "$WAN" 600 || fail "wan no creada tras 600s"
+
+ifconfig lo up 2>>"$LOG" || fail "lo up fallo"
+# master/conduit DSA UP antes que los puertos (orden documentado kernel DSA)
+if [ -d /sys/class/net/eth0 ]; then
+	ifconfig eth0 up 2>>"$LOG" || log "WARN: eth0 up fallo"
+	log "eth0 (conduit DSA) up"
+fi
+if [ -d /sys/class/net/sw0 ]; then
+	ifconfig sw0 up 2>>"$LOG" || log "WARN: sw0 up fallo"
+	log "sw0 (conduit DSA) up"
+fi
+ifconfig "$WAN" up 2>>"$LOG" || fail "wan up fallo"
+wait_for_carrier "$WAN" 10 || log "wan sin carrier; DHCP continua"
+
+command -v udhcpc >/dev/null 2>&1 ||
+	fail "falta applet udhcpc"
+[ -x /etc/udhcpc/default.script ] ||
+	fail "falta default.script"
+log "udhcpc start"
+udhcpc -i "$WAN" -s /etc/udhcpc/default.script -p /run/udhcpc-wan.pid \
+	-t 0 -T 3 -x hostname:RiverOs >>/tmp/udhcpc-wan.log 2>&1 &
+UDCPID=$!
+sleep 2
+kill -0 "$UDCPID" 2>/dev/null ||
+	log "ERROR: udhcpc murio a los 2s"
+
+# br-lan SOLO con los LAN que existan (probe del MT7530 puede ser parcial:
+# wan/gmac1 vivo pero lan2-5 ausentes — nunca fail ni espera por lan faltante)
+AVAIL_LAN=""
+for iface in $LAN_PORTS; do
+	if [ -d "/sys/class/net/$iface" ]; then
+		AVAIL_LAN="$AVAIL_LAN $iface"
+	fi
 done
-ifconfig br-lan 192.168.88.1 netmask 255.255.255.0 up 2>/dev/null
-ifconfig wan up 2>/dev/null
-ifconfig wan 192.168.88.3 netmask 255.255.255.0 up 2>/dev/null
+if [ -n "$AVAIL_LAN" ]; then
+	brctl addbr "$BR" 2>>"$LOG" || log "WARN: addbr fallo (existe?)"
+	for iface in $AVAIL_LAN; do
+		ifconfig "$iface" up 2>>"$LOG"
+		brctl addif "$BR" "$iface" 2>>"$LOG"
+	done
+	ifconfig "$BR" "$LAN_IP" netmask "$LAN_NETMASK" up 2>>"$LOG" \
+		&& log "br-lan listo $LAN_IP (miembros:$AVAIL_LAN)" \
+		|| log "WARN: br-lan config fallo"
+else
+	log "sin lan2-5 (probe MT7530 parcial o ausente) — solo wan"
+fi
 
-echo "RiverOs init: dropbear"
-/usr/sbin/dropbear -R -p 22 2>/dev/null
+log "dropbear start"
+/usr/sbin/dropbear -R -p 22 >>/tmp/dropbear.log 2>&1 &
+log "init complete — RiverOs E2 via preinit"
 
-echo "RiverOs init: OK (wan 192.168.88.3, br-lan 192.168.88.1)"
-# loop: mantener init vivo (si muere, no panic)
-while true; do
-    sleep 3600
+while :; do
+	sleep 60
 done
