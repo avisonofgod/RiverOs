@@ -16,6 +16,15 @@
 START=08
 STOP=90
 
+# Guard: /etc/config/network referencia los nombres del DTS (wan/lan2..lan5).
+# Si se renombra a ethX sin actualizar la UCI, netifd no encuentra los devices
+# y el router arranca sin red. Habilitar este script exige migrar la UCI.
+names_match_uci() {
+	grep -qE "option device '(wan|lan[2-5])'|list ports '(wan|lan[2-5])'" \
+		/etc/config/network 2>/dev/null && return 1
+	return 0
+}
+
 boot() {
     # Esperar a que el kernel cree los netdevs DSA (udev/hotplug async)
     local tries=0
@@ -34,6 +43,10 @@ start() {
 }
 
 rename_ports() {
+    if ! names_match_uci; then
+        echo "rename-ports: /etc/config/network usa wan/lan2-5; rename cancelado" >&2
+        return 0
+    fi
     # Orden critico: liberar eth0 primero (cpu port -> sw0), luego los demas.
     ip link set eth0 name sw0 2>/dev/null
     ip link set wan name eth0 2>/dev/null

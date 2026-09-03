@@ -35,7 +35,8 @@ patches/                       <- parches locales documentados
 ## RiverOS-MIPS-RB750Gr3 (imagen)
 - Bin: riveros-6.12.94-v18 (4.39MB) — netboot BOOTP/TFTP
 - 42 paquetes (userspace mínimo: base-files, busybox, dropbear, procd...)
-- Red: wan 192.168.88.3 (preinit) o DHCP; br-lan 192.168.88.1 (lan2-5)
+- Red: wan 192.168.88.3 (preinit) o DHCP; br-lan 192.168.10.1 (lan2-5)
+  — wan y br-lan en /24 distintos: 192.168.88.0/24 es la red del loader netboot
 - SSH: dropbear, root/rbadmin2026 (CAMBIAR en producción)
 
 ## Estado

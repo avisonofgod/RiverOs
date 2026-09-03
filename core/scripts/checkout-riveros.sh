@@ -4,7 +4,7 @@
 # Uso: ./checkout-riveros.sh [destino]   (destino por defecto: ../openwrt)
 set -Eeuo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # raiz del repo
 DEST="${1:-$REPO/../openwrt}"
 TAG="v25.12.5"
 

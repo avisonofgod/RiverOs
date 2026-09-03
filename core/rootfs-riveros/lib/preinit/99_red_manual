@@ -1,35 +1,33 @@
 #!/bin/sh
 red_manual() {
 	local iface n=0
-	while [ "$n" -lt 90 ]; do
-		[ -d /sys/class/net/wan ] &&
-		[ -d /sys/class/net/lan2 ] &&
-		[ -d /sys/class/net/lan3 ] &&
-		[ -d /sys/class/net/lan4 ] &&
-		[ -d /sys/class/net/lan5 ] && break
+	# Esperar a que aparezca CUALQUIER netdev del bloque ethernet: el probe del
+	# MT7530 puede ser parcial (wan/gmac1 sin lan2-5). Exigir los 5 puertos
+	# gastaba los 90s completos en cada boot degradado y retrasaba el init.
+	while [ "$n" -lt 30 ]; do
+		if [ -d /sys/class/net/wan ] || [ -d /sys/class/net/lan2 ]; then
+			break
+		fi
 		sleep 1
 		n=$((n + 1))
 	done
 
-	[ -d /sys/class/net/wan ] || return 0
-	# orden documentado DSA (docs.kernel.org dsa/configuration + duck.ai):
+	# orden documentado DSA (docs.kernel.org dsa/configuration):
 	# el master/conduit (eth0/sw0) DEBE estar UP antes que los puertos DSA
 	ifconfig lo up 2>/dev/null
-	if [ -d /sys/class/net/eth0 ]; then
-		ifconfig eth0 up 2>/dev/null
-		echo "[preinit] eth0 (conduit) up" >>/tmp/init.log 2>/dev/null
-	fi
-	if [ -d /sys/class/net/sw0 ]; then
-		ifconfig sw0 up 2>/dev/null
-		echo "[preinit] sw0 (conduit) up" >>/tmp/init.log 2>/dev/null
-	fi
-	ifconfig wan up 2>/dev/null
-	for iface in lan2 lan3 lan4 lan5; do
+	for iface in eth0 sw0; do
+		[ -d "/sys/class/net/$iface" ] || continue
+		ifconfig "$iface" up 2>/dev/null
+		echo "[preinit] $iface (conduit) up" >>/tmp/init.log 2>/dev/null
+	done
+	for iface in wan lan2 lan3 lan4 lan5; do
 		[ -d "/sys/class/net/$iface" ] &&
 			ifconfig "$iface" up 2>/dev/null
 	done
-	echo "[preinit] provisional DSA interfaces ready" >>/tmp/init.log 2>/dev/null
-	echo "[preinit] provisional DSA interfaces ready" >/dev/kmsg 2>/dev/null
+	# el direccionamiento (br-lan/DHCP) lo hace /init: aqui solo se dejan los
+	# netdevs arriba, sin IPs, para no crear rutas /24 duplicadas.
+	echo "[preinit] DSA interfaces up (${n}s)" >>/tmp/init.log 2>/dev/null
+	echo "[preinit] DSA interfaces up (${n}s)" >/dev/kmsg 2>/dev/null
 }
 
 boot_hook_add initramfs red_manual
