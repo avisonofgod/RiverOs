@@ -92,7 +92,7 @@ find "$ROOTFS_SRC" -mindepth 1 -execdir touch -hcd "@${SOURCE_DATE_EPOCH:-178234
 
 # build del kernel / vmlinuz
 make -C "$K" "${KMAKE_FLAGS[@]}" olddefconfig 2>&1 | tail -n 20
-make -C "$K" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -n 20
+make -C "$K" -j"$JOBS" "${KMAKE_FLAGS[@]}" vmlinux vmlinuz 2>&1 | tail -n 20
 
 OUT="$REPO/core/artifacts/riveros-5.10.161-e2-initramfs-kernel.bin"
 mkdir -p "$(dirname "$OUT")"
