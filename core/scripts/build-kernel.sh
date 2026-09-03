@@ -5,13 +5,18 @@
 # Flujo (RB750Gr3, netboot): copia configs/parches/files del repo al arbol ->
 # prepare -> compile -> install -> initramfs-kernel.bin.
 #
-# Uso: ./build-kernel.sh [arbol_dir]   (default: ../openwrt)
+# Uso: ./build-kernel.sh [arbol_dir] [target_config] [kernel_config]
+#   defaults: core/configs/target-rb750gr3.config (v33) + kernel/mt7621-rb750gr3.config
 set -Eeuo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # raiz del repo
 OPENWRT="${1:-$REPO/../openwrt}"
+TCONF="${2:-$REPO/core/configs/target-rb750gr3.config}"
+KCONF="${3:-$REPO/core/configs/kernel/mt7621-rb750gr3.config}"
 
 [ -d "$OPENWRT/.git" ] || { echo "ERROR: $OPENWRT no es un arbol RiverOs (usa scripts/checkout-riveros.sh)" >&2; exit 1; }
+[ -f "$TCONF" ] || { echo "ERROR: target config no existe: $TCONF" >&2; exit 1; }
+[ -f "$KCONF" ] || { echo "ERROR: kernel config no existe: $KCONF" >&2; exit 1; }
 
 cd "$OPENWRT"
 export FORCE_UNSAFE_CONFIGURE=1
@@ -25,14 +30,16 @@ if [ ! -x staging_dir/host/bin/m4 ] || [ ! -x staging_dir/host/bin/flex ]; then
   make tools/install toolchain/install -j"$(nproc)" 2>&1 | tee /tmp/riveros-tools.log | tail -3
 fi
 
-echo "== 1. archivos del repo -> arbol =="
+echo "== 1. archivos del repo -> arbol ==
+target config: $TCONF
+kernel config: $KCONF"
 # 1a. .config del target (paquetes del initramfs)
-cp "$REPO/core/configs/target-rb750gr3.config" .config
+cp "$TCONF" .config
 # defconfig materializa las DEPENDS del target config (sin esto, p.ej. curl
 # entra sin libcurl y la imagen falla en runtime con "missing libcurl.so.4")
 make defconfig >/dev/null
 # 1b. kernel config (fuente primaria)
-cp "$REPO/core/configs/kernel/mt7621-rb750gr3.config" target/linux/ramips/mt7621/config-6.12
+cp "$KCONF" target/linux/ramips/mt7621/config-6.12
 # 1c. parches del kernel (limpiar viejos del arbol para evitar duplicados)
 mkdir -p target/linux/ramips/patches-6.12
 rm -f target/linux/ramips/patches-6.12/*load-y* target/linux/ramips/patches-6.12/*mt7530* target/linux/ramips/patches-6.12/935-* target/linux/ramips/patches-6.12/936-*
